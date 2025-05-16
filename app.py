@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-AI题库服务主应用
-基于OpenAI API的问题解答服务，兼容OCS题库接口格式
+EduBrain AI - 智能题库系统
+基于 OpenAI API 的智能题库服务，提供兼容 OCS 接口的智能答题功能
+作者：Lynn
+版本：1.1.0
 """
 from flask import Flask, request, jsonify, make_response, render_template
 from flask_cors import CORS
@@ -10,6 +12,7 @@ import time
 import logging
 import openai
 import json
+from datetime import datetime
 
 from config import Config
 from utils import SimpleCache, format_answer_for_ocs, parse_question_and_options, extract_answer
@@ -38,6 +41,11 @@ client = openai.OpenAI(
     api_key=Config.OPENAI_API_KEY,
     base_url=Config.OPENAI_API_BASE
 )
+
+# 问答记录存储（实际应用中可以使用数据库）
+qa_records = []
+MAX_RECORDS = 100  # 最多保存100条记录
+start_time = time.time()
 
 def verify_access_token(request):
     """验证访问令牌（如果配置了的话）"""
@@ -134,6 +142,19 @@ def search():
         if Config.ENABLE_CACHE:
             cache.set(question, processed_answer, question_type, options)
         
+        # 保存问答记录
+        current_time = datetime.now()
+        qa_records.append({
+            'time': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'timestamp': current_time.isoformat(),
+            'question': question,
+            'type': question_type,
+            'options': options,
+            'answer': processed_answer
+        })
+        if len(qa_records) > MAX_RECORDS:
+            qa_records.pop(0)
+        
         # 记录处理时间
         process_time = time.time() - start_time
         logger.info(f"问题处理完成 (耗时: {process_time:.2f}秒)")
@@ -196,13 +217,33 @@ def get_stats():
     
     stats = {
         'version': '1.0.0',
-        'uptime': time.time(),  # 实际应用中应记录启动时间并计算差值
+        'uptime': time.time() - start_time,
         'model': Config.OPENAI_MODEL,
         'cache_enabled': Config.ENABLE_CACHE,
-        'cache_size': len(cache.cache) if Config.ENABLE_CACHE else 0
+        'cache_size': len(cache.cache) if Config.ENABLE_CACHE else 0,
+        'qa_records_count': len(qa_records)
     }
     
     return jsonify(stats)
+
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
+    """仪表盘 - 显示问答记录和系统状态"""
+    uptime_seconds = time.time() - start_time
+    days = int(uptime_seconds // 86400)
+    hours = int((uptime_seconds % 86400) // 3600)
+    minutes = int((uptime_seconds % 3600) // 60)
+    uptime_str = f"{days}天{hours}小时{minutes}分钟"
+    
+    return render_template(
+        'dashboard.html',
+        version="1.1.0",
+        cache_enabled=Config.ENABLE_CACHE,
+        cache_size=len(cache.cache) if Config.ENABLE_CACHE else 0,
+        model=Config.OPENAI_MODEL,
+        uptime=uptime_str,
+        records=qa_records
+    )
 
 @app.route('/', methods=['GET'])
 def index():
