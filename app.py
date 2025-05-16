@@ -119,7 +119,7 @@ def search():
             temperature=Config.TEMPERATURE,
             max_tokens=Config.MAX_TOKENS,
             messages=[
-                {"role": "system", "content": "你是一个专业的考试答题助手。请直接回答答案，不要解释。选择题只回答选项字母,还有选项的内容(如A)；多选题用#号分隔答案(如A#B#C)；判断题只回答: 正确/对/true/√ 或 错误/错/false/×；填空题直接给出答案。"},
+                {"role": "system", "content": "你是一个专业的考试答题助手。请直接回答答案，不要解释。选择题只回答选项的内容(如：地球)；多选题用#号分隔答案,只回答选项的内容(如中国#世界#地球)；判断题只回答: 正确/对/true/√ 或 错误/错/false/×；填空题直接给出答案。"},
                 {"role": "user", "content": prompt}
             ]
         )
