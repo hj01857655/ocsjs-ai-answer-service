@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI题库服务 - 基于OpenAI</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>AI题库服务</h1>
+        <p>基于OpenAI API的问题解答服务，兼容OCS题库接口</p>
+        
+        <div class="form-group">
+            <label for="question">问题内容：</label>
+            <textarea id="question" placeholder="请输入问题内容"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="question-type">问题类型：</label>
+            <select id="question-type">
+                <option value="">未指定</option>
+                <option value="single">单选题</option>
+                <option value="multiple">多选题</option>
+                <option value="judgement">判断题</option>
+                <option value="completion">填空题</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="options">选项内容：</label>
+            <textarea id="options" placeholder="请输入选项内容，每行一个选项。例如：&#10;A. 选项1&#10;B. 选项2&#10;C. 选项3&#10;D. 选项4"></textarea>
+        </div>
+        
+        <button id="search-btn">获取答案</button>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>AI正在思考，请稍候...</p>
+        </div>
+        
+        <div id="result" class="result" style="display: none;">
+            <h3>AI回答结果：</h3>
+            <div id="answer-content"></div>
+        </div>
+        
+        <div class="form-group" style="margin-top: 30px;">
+            <h3>OCS配置示例：</h3>
+            <pre id="ocs-config">[
+  {
+    "name": "AI智能题库",
+    "homepage": "自定义主页地址",
+    "url": "http://localhost:5000/api/search",
+    "method": "get",
+    "contentType": "json",
+    "data": {
+      "title": "${title}",
+      "type": "${type}",
+      "options": "${options}"
+    },
+    "handler": "return (res)=> res.code === 1 ? [res.question, res.answer] : [res.msg, undefined]"
+  }
+]</pre>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('search-btn').addEventListener('click', async function() {
+            const question = document.getElementById('question').value.trim();
+            const questionType = document.getElementById('question-type').value;
+            const options = document.getElementById('options').value.trim();
+            
+            if (!question) {
+                alert('请输入问题内容');
+                return;
+            }
+            
+            // 显示加载中
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            
+            try {
+                const response = await axios.get('/api/search', {
+                    params: {
+                        title: question,
+                        type: questionType,
+                        options: options
+                    }
+                });
+                
+                const result = response.data;
+                
+                // 显示结果
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('result').style.display = 'block';
+                
+                if (result.code === 1) {
+                    // 成功获取答案
+                    document.getElementById('result').classList.remove('error');
+                    document.getElementById('answer-content').innerHTML = `<p><strong>问题：</strong>${result.question}</p><p><strong>答案：</strong>${result.answer}</p>`;
+                } else {
+                    // 获取答案失败
+                    document.getElementById('result').classList.add('error');
+                    document.getElementById('answer-content').innerHTML = `<p>${result.msg || '获取答案失败'}</p>`;
+                }
+            } catch (error) {
+                // 显示错误信息
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('result').classList.add('error');
+                document.getElementById('answer-content').innerHTML = `<p>请求失败: ${error.message}</p>`;
+            }
+        });
+        
+        // 更新OCS配置中的URL
+        function updateOcsConfig() {
+            const host = window.location.host;
+            const protocol = window.location.protocol;
+            const baseUrl = `${protocol}//${host}`;
+            
+            let configText = document.getElementById('ocs-config').textContent;
+            configText = configText.replace(/http:\/\/localhost:5000/g, baseUrl);
+            document.getElementById('ocs-config').textContent = configText;
+        }
+        
+        // 页面加载完成后执行
+        window.addEventListener('load', updateOcsConfig);
+    </script>
+</body>
+</html>
