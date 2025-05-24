@@ -66,6 +66,11 @@
                                 </thead>
                                 <tbody>
                                     {% for record in records %}
+                                    <!-- 
+                                    调试信息:
+                                    record类型: {{ record.__class__.__name__ }}
+                                    record数据: {{ record }}
+                                    -->
                                     <tr>
                                         <td data-order="{{ record.timestamp }}">{{ record.time }}</td>
                                         <td>{{ record.type }}</td>
@@ -85,9 +90,94 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <button class="btn btn-sm btn-info" onclick="showDetail('{{ record.question|tojson|safe }}', '{{ record.options|tojson|safe }}', '{{ record.answer|tojson|safe }}')">详情</button>
+                                            <button class="btn btn-sm btn-info me-1" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#detailModal{{ loop.index }}">详情</button>
+                                            <button class="btn btn-sm btn-warning" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editModal{{ loop.index }}">编辑</button>
                                         </td>
                                     </tr>
+                                    
+                                    <!-- 每条记录的模态框 -->
+                                    <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" role="dialog" aria-labelledby="detailModalLabel{{ loop.index }}" aria-modal="true">
+                                        <div class="modal-dialog modal-lg" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">问答详情</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <h6 id="question-label{{ loop.index }}">问题：</h6>
+                                                        <pre class="border rounded p-3 bg-light" aria-labelledby="question-label{{ loop.index }}">{{ record.question }}</pre>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <h6 id="type-label{{ loop.index }}">问题类型：</h6>
+                                                        <pre class="border rounded p-3 bg-light" aria-labelledby="type-label{{ loop.index }}">{{ record.type or '未指定' }}</pre>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <h6 id="options-label{{ loop.index }}">选项：</h6>
+                                                        <pre class="border rounded p-3 bg-light" aria-labelledby="options-label{{ loop.index }}">{{ record.options or '无' }}</pre>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <h6 id="answer-label{{ loop.index }}">答案：</h6>
+                                                        <pre class="border rounded p-3 bg-light" aria-labelledby="answer-label{{ loop.index }}">{{ record.answer }}</pre>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 每条记录的编辑模态框 -->
+                                    <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" role="dialog" aria-labelledby="editModalLabel{{ loop.index }}" aria-modal="true">
+                                        <div class="modal-dialog modal-lg" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="editModalLabel{{ loop.index }}">编辑问答</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <form id="editForm{{ loop.index }}" action="/api/record/update" method="POST">
+                                                        <input type="hidden" name="record_index" value="{{ loop.index0 }}">
+                                                        
+                                                        <div class="mb-3">
+                                                            <label for="edit-question-{{ loop.index }}" class="form-label">问题内容：</label>
+                                                            <textarea class="form-control" id="edit-question-{{ loop.index }}" name="question" rows="3">{{ record.question }}</textarea>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <label for="edit-type-{{ loop.index }}" class="form-label">问题类型：</label>
+                                                            <select class="form-select" id="edit-type-{{ loop.index }}" name="type">
+                                                                <option value="" {% if not record.type %}selected{% endif %}>未指定</option>
+                                                                <option value="single" {% if record.type == 'single' %}selected{% endif %}>单选题</option>
+                                                                <option value="multiple" {% if record.type == 'multiple' %}selected{% endif %}>多选题</option>
+                                                                <option value="judgement" {% if record.type == 'judgement' %}selected{% endif %}>判断题</option>
+                                                                <option value="completion" {% if record.type == 'completion' %}selected{% endif %}>填空题</option>
+                                                            </select>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <label for="edit-options-{{ loop.index }}" class="form-label">选项内容：</label>
+                                                            <textarea class="form-control" id="edit-options-{{ loop.index }}" name="options" rows="4">{{ record.options }}</textarea>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <label for="edit-answer-{{ loop.index }}" class="form-label">答案：</label>
+                                                            <textarea class="form-control" id="edit-answer-{{ loop.index }}" name="answer" rows="2">{{ record.answer }}</textarea>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                    <button type="button" class="btn btn-primary" onclick="submitEditForm('{{ loop.index }}')">保存</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -105,32 +195,6 @@
             <p><small>© 2024-2025 All Rights Reserved</small></p>
         </div>
     </footer>
-
-    <!-- Modal -->
-    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">问答详情</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <h6>问题：</h6>
-                        <pre class="border rounded p-3 bg-light" id="modal-question"></pre>
-                    </div>
-                    <div class="mb-3">
-                        <h6>选项：</h6>
-                        <pre class="border rounded p-3 bg-light" id="modal-options"></pre>
-                    </div>
-                    <div class="mb-3">
-                        <h6>答案：</h6>
-                        <pre class="border rounded p-3 bg-light" id="modal-answer"></pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
@@ -171,12 +235,40 @@
             });
         }
     }
-
-    function showDetail(question, options, answer) {
-        document.getElementById('modal-question').textContent = question;
-        document.getElementById('modal-options').textContent = options || '无';
-        document.getElementById('modal-answer').textContent = answer;
-        new bootstrap.Modal(document.getElementById('detailModal')).show();
+    
+    function submitEditForm(index) {
+        // 确保索引是字符串类型
+        index = String(index);
+        
+        const formId = `editForm${index}`;
+        const form = document.getElementById(formId);
+        
+        const formData = new FormData(form);
+        const jsonData = {};
+        
+        for (let [key, value] of formData.entries()) {
+            jsonData[key] = value;
+        }
+        
+        fetch('/api/record/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jsonData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('更新成功');
+                location.reload();
+            } else {
+                alert('更新失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('操作失败: ' + error);
+        });
     }
     </script>
 </body>
