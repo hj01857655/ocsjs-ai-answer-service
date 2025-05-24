@@ -284,19 +284,62 @@ def docs():
         <html>
             <head>
                 <title>AI题库服务 - API文档</title>
+                <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
                 <style>
-                    body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
-                    h1, h2, h3 {{ color: #2c3e50; }}
-                    .container {{ max-width: 800px; margin: 0 auto; }}
-                    code {{ background: #e0e0e0; padding: 2px 4px; border-radius: 3px; }}
-                    pre {{ background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }}
-                    table {{ border-collapse: collapse; width: 100%; }}
-                    th, td {{ border: 1px solid #ddd; padding: 8px; }}
-                    th {{ background-color: #f4f4f4; }}
+                    body {{
+                        font-family: 'Segoe UI', 'Arial', 'Microsoft YaHei', sans-serif;
+                        background: #f7f9fa;
+                        margin: 0;
+                        padding: 0;
+                    }}
+                    .container {{
+                        max-width: 900px;
+                        margin: 40px auto;
+                        background: #fff;
+                        border-radius: 10px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                        padding: 40px 32px;
+                    }}
+                    h1, h2, h3 {{
+                        color: #2c3e50;
+                        border-bottom: 1px solid #eaecef;
+                        padding-bottom: 6px;
+                    }}
+                    code, pre {{
+                        background: #f4f4f4;
+                        color: #c7254e;
+                        border-radius: 4px;
+                        padding: 2px 6px;
+                        font-size: 1em;
+                    }}
+                    pre {{
+                        padding: 12px;
+                        overflow-x: auto;
+                    }}
+                    table {{
+                        border-collapse: collapse;
+                        width: 100%;
+                        margin: 20px 0;
+                    }}
+                    th, td {{
+                        border: 1px solid #eaecef;
+                        padding: 10px;
+                        text-align: left;
+                    }}
+                    th {{
+                        background: #f6f8fa;
+                    }}
+                    a {{
+                        color: #007bff;
+                        text-decoration: none;
+                    }}
+                    a:hover {{
+                        text-decoration: underline;
+                    }}
                 </style>
             </head>
             <body>
-                <div class="container">
+                <div class=\"container\">
                     {html_content}
                 </div>
             </body>
