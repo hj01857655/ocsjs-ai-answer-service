@@ -5,17 +5,22 @@ EduBrain AI - 智能题库系统
 作者：Lynn
 版本：1.1.0
 """
-from flask import Flask, request, jsonify, make_response, render_template
+
+import os
+os.environ['SSL_CERT_FILE'] = r"C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt"
+
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
+import json
 import time
 import logging
 import openai
-import json
 from datetime import datetime
 
 from config import Config
 from utils import SimpleCache, format_answer_for_ocs, parse_question_and_options, extract_answer
+import os
 
 # 配置日志
 logging.basicConfig(
@@ -131,10 +136,24 @@ def search():
                 {"role": "user", "content": prompt}
             ]
         )
-        
+        for line in response.splitlines():
+            print("DEBUG: line：", line)
+            if line.startswith("data: "):
+                json_str=line[len("data: "):]
+                print("DEBUG: json_str：", json_str,type(json_str))
+                print("DEBUG: json_str：", json_str[len("data: "):])
+                data=json.loads(json_str)
+                print("DEBUG: data：", data,type(data))
+                ai_answer=data["choices"][0]["delta"].get("content", "").strip()
+                break
+        # if isinstance(response,str) and response.startswith("data: "):
+        #     json_str=response[len("data: "):]
+        #     data=json.loads(json_str)
+        #     ai_answer=data["choices"][0]["delta"].get("content", "").strip()
         # 获取AI生成的答案
-        ai_answer = response.choices[0].message.content.strip()
-        
+        else:
+            ai_answer=response.choices[0].message.content.strip()
+        print("DEBUG: ai_answer：", ai_answer,type(ai_answer))
         # 处理答案格式
         processed_answer = extract_answer(ai_answer, question_type)
         
