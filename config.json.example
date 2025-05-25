@@ -1,0 +1,42 @@
+{
+  "service": {
+    "host": "0.0.0.0",
+    "port": 5000,
+    "debug": true,
+    "ssl_cert_file": null
+  },
+  "openai": {
+    "api_key": "your_api_key_here",
+    "model": "gpt-3.5-turbo",
+    "api_base": "https://api.openai.com/v1/"
+  },
+  "logging": {
+    "level": "INFO"
+  },
+  "security": {
+    "access_token": null
+  },
+  "response": {
+    "max_tokens": 500,
+    "temperature": 0.7
+  },
+  "cache": {
+    "enable": true,
+    "expiration": 2592000
+  },
+  "database": {
+    "type": "mysql",
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "your_db_password_here",
+    "name": "ocs_qa"
+  },
+  "redis": {
+    "enabled": false,
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 0
+  }
+} 
