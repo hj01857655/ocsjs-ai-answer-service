@@ -1,5 +1,7 @@
 # EduBrain AI - 智能题库系统
 
+> **配置系统更新通知**: 本项目已从环境变量配置(.env)迁移到JSON配置文件。请使用config.json来配置服务，不再需要.env文件。详细配置选项请参考config.json.example。
+
 这是一个基于Python和OpenAI API的新一代智能题库服务，专为[OCS (Online Course Script)](https://github.com/ocsjs/ocsjs)设计，可以通过AI自动回答题目。此服务实现了与OCS AnswererWrapper兼容的API接口，方便用户将AI能力整合到OCS题库搜索中。
 
 ## ⚠️ 重要提示
@@ -42,19 +44,25 @@ cd ocsjs-ai-answer-service
 pip install -r requirements.txt
 ```
 
-### 3. 配置环境变量
+### 3. 配置config.json
 
-将`.env.example`复制为`.env`并填写必要的配置信息：
+将`config.json.example`复制为`config.json`并填写必要的配置信息：
 
 ```bash
-cp .env.example .env
+cp config.json.example config.json
 ```
 
-编辑`.env`文件，至少需要填写OpenAI API密钥：
+编辑`config.json`文件，至少需要填写OpenAI API密钥：
 
+```json
+{
+  "openai": {
+    "api_key": "your_api_key_here"
+  }
+}
 ```
-OPENAI_API_KEY=your_api_key_here
-```
+
+完整的配置选项请参考项目中的config.json.example文件。
 
 ### 4. 启动服务
 
@@ -173,10 +181,14 @@ python app.py
 
 ## 安全设置
 
-如果你想增加安全性，可以在`.env`文件中设置访问令牌：
+如果你想增加安全性，可以在`config.json`文件中设置访问令牌：
 
-```
-ACCESS_TOKEN=your_secret_token_here
+```json
+{
+  "security": {
+    "access_token": "your_secret_token_here"
+  }
+}
 ```
 
 设置后，所有API请求都需要包含此令牌，可以通过以下两种方式之一传递：
@@ -215,7 +227,7 @@ CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
 
 ```bash
 docker build -t ai-answer-service .
-docker run -p 5000:5000 --env-file .env ai-answer-service
+docker run -p 5000:5000 ai-answer-service
 ```
 
 ## 常见问题
@@ -238,11 +250,10 @@ AI生成的答案可能存在以下情况：
 
 对于多选题，OCS期望的答案格式是用`#`分隔的选项，例如`A#B#C`。本服务已经处理了这个格式，会自动将OpenAI返回的多选答案转换为此格式。
 
-### 2. API请求限制
+### 3. API请求限制
 
 注意OpenAI API有使用限制和费用。确保你的账户有足够的额度来处理预期的请求量。
 
-### 3. 网络连接问题
+### 4. 网络连接问题
 
 确保部署此服务的服务器能够访问OpenAI API（api.openai.com）。某些地区可能需要代理服务。
-
