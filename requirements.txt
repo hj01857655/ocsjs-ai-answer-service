@@ -4,3 +4,8 @@ python-dotenv
 openai
 gunicorn
 requests
+pymysql
+redis
+cryptography
+SQLAlchemy
+markdown
