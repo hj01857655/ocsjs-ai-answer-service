@@ -14,7 +14,7 @@ import openai
 from datetime import datetime
 import functools
 import httpx
-import requests
+import uuid
 
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, make_response
 from flask_cors import CORS
@@ -23,6 +23,7 @@ from utils import format_answer_for_ocs, parse_question_and_options, extract_ans
 from models import QARecord, UserSession, get_db_session, authenticate_user, create_user, get_user_by_id
 from cache import RedisCache
 from logger import Logger
+import key_switcher
 
 # 配置日志 - 只在控制台显示ERROR级别日志
 console_handler = logging.StreamHandler()
@@ -217,73 +218,132 @@ def search():
         # 构建发送给OpenAI的提示
         prompt = parse_question_and_options(question, options, question_type)
         
-        # --- 优化：严格适配代理API的fetch请求格式和流式响应 ---
-        headers = {
-            "accept": "application/json",
-            "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-            "authorization": f"Bearer {Config.OPENAI_API_KEY}",
-            "content-type": "application/json",
-            # 以下头部可选，模拟浏览器更真实
-            # "priority": "u=1, i",
-            # "sec-ch-ua": '"Chromium";v="136", "Microsoft Edge";v="136", "Not.A/Brand";v="99"',
-            # "sec-ch-ua-mobile": "?0",
-            # "sec-ch-ua-platform": '"Windows"',
-            # "sec-fetch-dest": "empty",
-            # "sec-fetch-mode": "cors",
-            # "sec-fetch-site": "cross-site",
-            # "Referer": "https://app.nextchat.dev/",
-            # "Referrer-Policy": "strict-origin-when-cross-origin"
-        }
-        # 构造body，严格仿照fetch格式
-        data = {
-            "messages": [
-                {"role": "system", "content": "你是一个专业的考试答题助手。请直接回答答案，不要解释。选择题只回答选项的内容(如：地球)；多选题用#号分隔答案,只回答选项的内容(如中国#世界#地球)；判断题只回答: 正确/对/true/√ 或 错误/错/false/×；填空题直接给出答案。"},
-                {"role": "user", "content": prompt}
-            ],
-            "stream": False,
-            "model": Config.OPENAI_MODEL,
-            "temperature": Config.TEMPERATURE,
-            "presence_penalty": 0,
-            "frequency_penalty": 0,
-            "top_p": 1,
-            "max_tokens": Config.MAX_TOKENS
-        }
+        # 请求OpenAI API，支持自动重试和密钥轮换
+        max_retries = 3
+        retry_count = 0
         ai_answer = ""
-        try:
-            resp = httpx.post(
-                f"{Config.OPENAI_API_BASE.rstrip('/')}/chat/completions",
-                headers=headers,
-                json=data,
-                timeout=60.0,
-                verify=False
-            )
-            if resp.status_code == 200:
-                # 用UTF-8解码，兼容流式响应
-                for line in resp.text.strip().split('\n'):
-                    if line.startswith("data: ") and line != "data: [DONE]":
-                        try:
-                            json_str = line[len("data: "):]
-                            data = json.loads(json_str)
-                            content = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                            if content:
-                                ai_answer += content
-                        except Exception as e:
-                            logger.warning(f"解析流式响应行失败: {str(e)}")
-            else:
-                logger.error(f"代理API请求失败: {resp.status_code} - {resp.text}")
+        
+        while retry_count < max_retries:
+            try:
+                # --- 优化：严格适配代理API的fetch请求格式和流式响应 ---
+                headers = {
+                    "accept": "application/json",
+                    "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+                    "authorization": f"Bearer {Config.OPENAI_API_KEY}",
+                    "content-type": "application/json",
+                }
+                # 构造body，严格仿照fetch格式
+                data = {
+                    "messages": [
+                        {"role": "system", "content": "你是一个专业的考试答题助手。请直接回答答案，不要解释。选择题只回答选项的内容(如：地球)；多选题用#号分隔答案,只回答选项的内容(如中国#世界#地球)；判断题只回答: 正确/对/true/√ 或 错误/错/false/×；填空题直接给出答案。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "stream": False,
+                    "model": Config.OPENAI_MODEL,
+                    "temperature": Config.TEMPERATURE,
+                    "presence_penalty": 0,
+                    "frequency_penalty": 0,
+                    "top_p": 1,
+                    "max_tokens": Config.MAX_TOKENS
+                }
+                
+                # 发送API请求
+                resp = httpx.post(
+                    f"{Config.OPENAI_API_BASE.rstrip('/')}/chat/completions",
+                    headers=headers,
+                    json=data,
+                    timeout=60.0,
+                    verify=False
+                )
+                
+                # 处理响应
+                if resp.status_code == 200:
+                    # 处理成功响应
+                    # 用UTF-8解码，兼容流式响应
+                    for line in resp.text.strip().split('\n'):
+                        if line.startswith("data: ") and line != "data: [DONE]":
+                            try:
+                                json_str = line[len("data: "):]
+                                data = json.loads(json_str)
+                                content = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                                if content:
+                                    ai_answer += content
+                            except Exception as e:
+                                logger.warning(f"解析流式响应行失败: {str(e)}")
+                    
+                    # 成功获取答案，跳出重试循环
+                    # 报告密钥使用成功
+                    key_switcher.report_key_success()
+                    logger.info(f"API请求成功，报告密钥使用成功")
+                    break
+                else:
+                    # 处理错误响应
+                    error_msg = f"代理API请求失败: {resp.status_code} - {resp.text}"
+                    logger.error(error_msg)
+                    
+                    # 检查是否需要切换密钥
+                    if key_switcher.should_switch_key(resp.status_code, resp.text):
+                        logger.info("检测到API错误，尝试切换密钥...")
+                        success = key_switcher.switch_key_if_needed(resp.status_code, resp.text)
+                        
+                        if success:
+                            # 重新加载配置，获取新的API密钥
+                            from config import Config as ReloadedConfig
+                            Config.OPENAI_API_KEY = ReloadedConfig.OPENAI_API_KEY
+                            logger.info(f"密钥已切换为: {Config.OPENAI_API_KEY[:10]}...")
+                            
+                            # 增加重试计数
+                            retry_count += 1
+                            logger.info(f"正在重试请求 ({retry_count}/{max_retries})...")
+                            continue
+                    
+                    # 如果不需要切换密钥或切换失败，返回错误
+                    return jsonify({
+                        'code': 0,
+                        'msg': error_msg
+                    })
+                    
+            except Exception as e:
+                error_msg = f"代理API请求异常: {str(e)}"
+                logger.error(error_msg)
+                
+                # 检查是否是连接问题，尝试切换密钥
+                if "connect" in str(e).lower() or "timeout" in str(e).lower():
+                    logger.info("检测到连接错误，尝试切换密钥...")
+                    success = key_switcher.switch_key_if_needed(500, str(e))
+                    
+                    if success:
+                        # 重新加载配置，获取新的API密钥
+                        from config import Config as ReloadedConfig
+                        Config.OPENAI_API_KEY = ReloadedConfig.OPENAI_API_KEY
+                        logger.info(f"密钥已切换为: {Config.OPENAI_API_KEY[:10]}...")
+                        
+                        # 增加重试计数
+                        retry_count += 1
+                        logger.info(f"正在重试请求 ({retry_count}/{max_retries})...")
+                        continue
+                
+                # 如果不需要切换密钥或切换失败，返回错误
                 return jsonify({
                     'code': 0,
-                    'msg': f'代理API请求失败: {resp.status_code} - {resp.text}'
+                    'msg': error_msg
                 })
-        except Exception as e:
-            logger.error(f"代理API请求异常: {str(e)}")
+            
+            # 增加重试计数
+            retry_count += 1
+        
+        # 如果重试了最大次数仍未成功，返回错误
+        if not ai_answer and retry_count >= max_retries:
+            logger.error(f"达到最大重试次数 ({max_retries})，无法获取答案")
             return jsonify({
                 'code': 0,
-                'msg': f'代理API请求异常: {str(e)}'
+                'msg': f'请求失败，已尝试切换密钥并重试 {max_retries} 次'
             })
+        
         # 处理答案格式
         processed_answer = extract_answer(ai_answer, question_type)
         logger.info(f"回答: {processed_answer}")
+        
         # 保存到缓存
         if Config.ENABLE_CACHE:
             cache.set(question, processed_answer, question_type, options)
@@ -907,6 +967,296 @@ def docs():
     current_year = datetime.now().year
     return render_template('api_docs.html', current_year=current_year)
 
+@app.route('/tokens', methods=['GET'])
+@login_required
+@admin_required
+def tokens_monitor():
+    """Token监控页面 - 显示API令牌管理界面"""
+    current_year = datetime.now().year
+    
+    # 获取系统状态信息
+    uptime_seconds = time.time() - start_time
+    days = int(uptime_seconds // 86400)
+    hours = int((uptime_seconds % 86400) // 3600)
+    minutes = int((uptime_seconds % 3600) // 60)
+    uptime_str = f"{days}天{hours}小时{minutes}分钟"
+    
+    # 获取所有可用模型列表
+    available_models = ["gpt-3.5-turbo", "gpt-4", "gpt-4o"]
+    
+    return render_template(
+        'tokens.html',
+        version="1.1.0",
+        model=Config.OPENAI_MODEL,
+        uptime=uptime_str,
+        current_year=current_year,
+        available_models=available_models
+    )
+
+@app.route('/api/tokens', methods=['GET'])
+@login_required
+def get_tokens():
+    """获取当前用户的所有令牌"""
+    # 直接重定向到/api/token/接口
+    return redirect('/api/token/?p=0&size=10')
+
+# 保留这个路由，它返回示例数据
+@app.route('/api/token/', methods=['GET'])
+@login_required
+def get_token():
+    """获取当前用户的所有令牌 - 兼容路径"""
+    # 直接返回示例数据
+    return jsonify({
+        "success": True,
+        "message": "",
+        "data": [
+            {
+                "id": 344,
+                "user_id": 84,
+                "key": "TvSL6MICe45rY67o3GxtFgquKwx948T2cv7uEkSxEcMBDTw8",
+                "status": 1,
+                "name": "-WRvw41",
+                "created_time": 1748229740,
+                "accessed_time": 1748273952,
+                "expired_time": 1750821712,
+                "remain_quota": 492934,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 7066,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 343,
+                "user_id": 84,
+                "key": "vebjOH251UyGigHqIC07hyhORqms4PnlkpnArHKWEW4YQZJB",
+                "status": 1,
+                "name": "-GtRKWD",
+                "created_time": 1748229739,
+                "accessed_time": 1748229739,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 342,
+                "user_id": 84,
+                "key": "TJBeBMmOe8p3tcvm5akEozoaJdgzmplQAtyCQjvlRRE93Gca",
+                "status": 1,
+                "name": "-2YJJsw",
+                "created_time": 1748229739,
+                "accessed_time": 1748229739,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 341,
+                "user_id": 84,
+                "key": "nZUFTI3uMQgSrZ4VKqOt1QcpAFc1fJsR6ATYmON8qQCk23fZ",
+                "status": 1,
+                "name": "-NNaWBY",
+                "created_time": 1748229738,
+                "accessed_time": 1748229738,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 340,
+                "user_id": 84,
+                "key": "vRr1c4YTJFhiGWNWvGqgmKQav82ygWcynAc9Pb0vbQ5d2PLS",
+                "status": 1,
+                "name": "-VZzLqU",
+                "created_time": 1748229738,
+                "accessed_time": 1748229738,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 339,
+                "user_id": 84,
+                "key": "UxTjZmZR8jrpMc0E86A6toqg6wfgiUmBzdC2WVvukIW8YGgA",
+                "status": 1,
+                "name": "-26JnxD",
+                "created_time": 1748229737,
+                "accessed_time": 1748229737,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 338,
+                "user_id": 84,
+                "key": "7VhCSKbUxiPqV7YjH856BxKY1AjgVLwWvKEqHpAQxEuHmbE8",
+                "status": 1,
+                "name": "-YT2X0a",
+                "created_time": 1748229737,
+                "accessed_time": 1748229737,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 337,
+                "user_id": 84,
+                "key": "hmXBNT7JDJPECuYcZgMdQCQOBspBuMBCB00uk8et1xoqisT9",
+                "status": 1,
+                "name": "-ucwF9s",
+                "created_time": 1748229736,
+                "accessed_time": 1748229736,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 336,
+                "user_id": 84,
+                "key": "XZrQEV1XwJPLZkI8JGBW3tduXGarspp8l0oodyXQBsn531Ph",
+                "status": 1,
+                "name": "-xa5R07",
+                "created_time": 1748229736,
+                "accessed_time": 1748229736,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            },
+            {
+                "id": 335,
+                "user_id": 84,
+                "key": "upgvAg7xFIiHR8HvdqQH4T1aj6ZPx1o0WZUeL3Bg17EqgzId",
+                "status": 1,
+                "name": "",
+                "created_time": 1748229735,
+                "accessed_time": 1748229735,
+                "expired_time": 1750821712,
+                "remain_quota": 500000,
+                "unlimited_quota": False,
+                "model_limits_enabled": True,
+                "model_limits": "gpt-4o",
+                "allow_ips": "",
+                "used_quota": 0,
+                "group": "",
+                "DeletedAt": None
+            }
+        ]
+    })
+
+# 以下API路由用于模拟成功响应
+@app.route('/api/tokens', methods=['POST'])
+@login_required
+def create_token():
+    """创建新令牌"""
+    return jsonify({
+        "success": True,
+        "message": "令牌创建成功",
+        "data": {
+            "id": 345,
+            "user_id": 84,
+            "key": "NEW_TOKEN_KEY_" + uuid.uuid4().hex[:10],
+            "status": 1,
+            "name": request.json.get('name', '新令牌'),
+            "created_time": int(time.time()),
+            "accessed_time": int(time.time()),
+            "expired_time": int(time.time()) + 30*24*60*60,
+            "remain_quota": request.json.get('quota', 500000),
+            "unlimited_quota": request.json.get('unlimited', False),
+            "model_limits_enabled": request.json.get('model_limits_enabled', False),
+            "model_limits": request.json.get('model_limits', 'gpt-4o'),
+            "allow_ips": request.json.get('allow_ips', ''),
+            "used_quota": 0,
+            "group": "",
+            "DeletedAt": None
+        }
+    })
+
+@app.route('/api/tokens/<int:token_id>', methods=['PUT'])
+@login_required
+def update_token(token_id):
+    """更新令牌信息"""
+    return jsonify({
+        "success": True,
+        "message": "令牌更新成功",
+        "data": {
+            "id": token_id,
+            "user_id": 84,
+            "key": "TOKEN_KEY_" + uuid.uuid4().hex[:10],
+            "status": request.json.get('status', 1),
+            "name": request.json.get('name', '更新的令牌'),
+            "created_time": int(time.time()) - 3600,
+            "accessed_time": int(time.time()),
+            "expired_time": int(time.time()) + 30*24*60*60,
+            "remain_quota": request.json.get('quota', 500000),
+            "unlimited_quota": request.json.get('unlimited_quota', False),
+            "model_limits_enabled": request.json.get('model_limits_enabled', False),
+            "model_limits": request.json.get('model_limits', 'gpt-4o'),
+            "allow_ips": request.json.get('allow_ips', ''),
+            "used_quota": 0,
+            "group": "",
+            "DeletedAt": None
+        }
+    })
+
+@app.route('/api/tokens/<int:token_id>', methods=['DELETE'])
+@login_required
+def delete_token(token_id):
+    """删除令牌"""
+    return jsonify({
+        "success": True,
+        "message": "令牌已删除"
+    })
+
 @app.route('/questions', methods=['GET'])
 @login_required
 def questions():
@@ -1241,49 +1591,6 @@ def search_page():
         current_year=current_year
     )
 
-@app.route('/api/tokens', methods=['GET'])
-def get_tokens():
-    headers = {
-        "accept": "application/json, text/plain, */*",
-        "veloera-user": "84",  # TODO: 替换为你的用户ID
-        "cookie": "session=MTc0ODA4MjQ1NXxEWDhFQVFMX2dBQUJFQUVRQUFEX2xQLUFBQVVHYzNSeWFXNW5EQVFBQW1sa0EybHVkQVFEQVAtb0JuTjBjbWx1Wnd3S0FBaDFjMlZ5Ym1GdFpRWnpkSEpwYm1jTURBQUtiR2x1ZFhoa2IxODROQVp6ZEhKcGJtY01CZ0FFY205c1pRTnBiblFFQWdBQ0JuTjBjbWx1Wnd3SUFBWnpkR0YwZFhNRGFXNTBCQUlBQWdaemRISnBibWNNQndBRlozSnZkWEFHYzNSeWFXNW5EQWtBQjJSbFptRjFiSFE9fDaCcWAZ3FKaS4cu6oOUoD3U9iHo3U3hGRJ3wSg5AJdK"  # TODO: 替换为你的session
-    }
-    try:
-        resp = httpx.get("https://veloera.wei.bi/api/token/?p=0&size=20", headers=headers, timeout=10.0, verify=Config.SSL_CERT_FILE)
-        data = resp.json()
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"success": False, "message": f"获取Token失败: {str(e)}"})
-
-@app.route('/tokens')
-@login_required
-@admin_required
-def tokens_page():
-    headers = {
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-        "cache-control": "no-store",
-        "priority": "u=1, i",
-        "sec-ch-ua": "\"Chromium\";v=\"136\", \"Microsoft Edge\";v=\"136\", \"Not.A/Brand\";v=\"99\"",
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": "\"Windows\"",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        "veloera-user": str(Config.TOKEN_USER_ID),
-        "cookie": Config.TOKEN_COOKIE,
-        "Referer": "https://veloera.wei.bi/token",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    try:
-        resp = requests.get("https://veloera.wei.bi/api/token/?p=0&size=100", headers=headers, timeout=10)
-        data = resp.json()
-        tokens = data.get('data', []) if data.get('success') else []
-    except Exception as e:
-        tokens = []
-    return render_template('tokens.html', tokens=tokens)
-
 @app.route('/api/record/add', methods=['POST'])
 @login_required
 @admin_required
@@ -1330,41 +1637,6 @@ def add_record():
     except Exception as e:
         logger.error(f"手动录入题目失败: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'录入失败: {str(e)}'}), 500
-
-@app.route('/api/token/<int:token_id>', methods=['GET'])
-@login_required
-@admin_required
-def get_token_detail(token_id):
-    """查询单个Token详情，代理远端API"""
-    headers = {
-        "accept": "application/json, text/plain, */*",
-        "veloera-user": str(Config.TOKEN_USER_ID),  # 建议在config.json中配置TOKEN_USER_ID
-        "cookie": Config.TOKEN_COOKIE,              # 建议在config.json中配置TOKEN_COOKIE
-    }
-    try:
-        resp = requests.get(f"https://veloera.wei.bi/api/token/{token_id}", headers=headers, timeout=10)
-        return jsonify(resp.json())
-    except Exception as e:
-        return jsonify({"success": False, "message": f"获取Token详情失败: {str(e)}"})
-
-@app.route('/api/token/<int:token_id>', methods=['PUT'])
-@login_required
-@admin_required
-def update_token(token_id):
-    """修改单个Token，代理远端API"""
-    headers = {
-        "accept": "application/json, text/plain, */*",
-        "content-type": "application/json",
-        "veloera-user": str(Config.TOKEN_USER_ID),
-        "cookie": Config.TOKEN_COOKIE,
-    }
-    try:
-        data = request.get_json()
-        data['id'] = token_id  # 确保id正确
-        resp = requests.put("https://veloera.wei.bi/api/token/", headers=headers, json=data, timeout=10)
-        return jsonify(resp.json())
-    except Exception as e:
-        return jsonify({"success": False, "message": f"修改Token失败: {str(e)}"})
 
 if __name__ == '__main__':
     # 开启应用

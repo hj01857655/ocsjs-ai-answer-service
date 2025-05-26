@@ -72,6 +72,3 @@ class Config:
     REDIS_PORT = int(_config.get('redis', {}).get('port', 6379))
     REDIS_PASSWORD = _config.get('redis', {}).get('password', "")
     REDIS_DB = int(_config.get('redis', {}).get('db', 0))
-
-    TOKEN_USER_ID = _config.get('TOKEN_USER_ID')
-    TOKEN_COOKIE = _config.get('TOKEN_COOKIE')

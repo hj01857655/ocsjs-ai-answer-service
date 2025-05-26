@@ -13,10 +13,6 @@
   "logging": {
     "level": "INFO"
   },
-  "security": {
-    "access_token": null,
-    "secret_key": "your_secret_key_here"
-  },
   "response": {
     "max_tokens": 500,
     "temperature": 0.7

@@ -113,6 +113,50 @@ textarea {
     padding-top: 0.5rem;
 }
 
+/* 日志页面样式 */
+.log-container {
+    height: 70vh;
+    overflow-y: auto;
+    background-color: #1e1e1e;
+    color: #ddd;
+    padding: 10px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.log-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #ddd;
+}
+
+.log-error {
+    display: block;
+    color: #ff5252;
+    font-weight: bold;
+}
+
+.log-warning {
+    display: block;
+    color: #ffb142;
+}
+
+.log-info {
+    display: block;
+    color: #2ed573;
+}
+
+.log-debug {
+    display: block;
+    color: #70a1ff;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .container {
@@ -134,6 +178,16 @@ textarea {
     
     .text-truncate {
         max-width: 150px;
+    }
+    
+    .log-toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .log-container {
+        height: 50vh;
+        font-size: 12px;
     }
 }
 

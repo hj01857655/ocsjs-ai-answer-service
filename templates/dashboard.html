@@ -1,363 +1,181 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduBrain AI - 智能题库统计面板</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">EduBrain AI</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/search">题目搜索</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard">统计面板</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/questions">题库管理</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/logs">系统日志</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/settings">系统设置</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/docs">API文档</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/tokens">Token监控</a></li>
-                </ul>
-                <div class="d-flex">
-                    {% if session.get('user_id') %}
-                        <div class="dropdown">
-                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-person-circle"></i> {{ session.get('username', '用户') }}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> 个人资料</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
-                            </ul>
-                        </div>
-                    {% else %}
-                        <a href="{{ url_for('login') }}" class="btn btn-light me-2"><i class="bi bi-box-arrow-in-right"></i> 登录</a>
-                        <a href="{{ url_for('register') }}" class="btn btn-outline-light"><i class="bi bi-person-plus"></i> 注册</a>
-                    {% endif %}
+{% extends 'base.html' %}
+{% block title %}EduBrain AI - 智能题库统计面板{% endblock %}
+{% block content %}
+<!-- 原dashboard主内容区，去除<nav>部分，直接放到content块 -->
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">系统信息</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>版本：</strong>{{ version }}</p>
+                    <p><strong>缓存状态：</strong>{{ "已启用" if cache_enabled else "未启用" }}</p>
+                    <p><strong>缓存数量：</strong>{{ cache_size }}条</p>
+                    <p><strong>使用模型：</strong>{{ model }}</p>
+                    <p><strong>运行时长：</strong>{{ uptime }}</p>
                 </div>
             </div>
         </div>
-    </nav>
-
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0">系统信息</h5>
-                    </div>
-                    <div class="card-body">
-                        <p><strong>版本：</strong>{{ version }}</p>
-                        <p><strong>缓存状态：</strong>{{ "已启用" if cache_enabled else "未启用" }}</p>
-                        <p><strong>缓存数量：</strong>{{ cache_size }}条</p>
-                        <p><strong>使用模型：</strong>{{ model }}</p>
-                        <p><strong>运行时长：</strong>{{ uptime }}</p>
-                    </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">最近问答记录</h5>
+                    <button class="btn btn-light btn-sm" onclick="clearCache()">清除缓存</button>
                 </div>
-            </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">最近问答记录</h5>
-                        <button class="btn btn-light btn-sm" onclick="clearCache()">清除缓存</button>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table id="qa-records" class="table table-striped table-hover dt-responsive nowrap" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>时间</th>
-                                        <th>问题类型</th>
-                                        <th>问题内容</th>
-                                        <th>选项</th>
-                                        <th>AI答案</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for record in records %}
-                                    <!-- 
-                                    调试信息:
-                                    record类型: {{ record.__class__.__name__ }}
-                                    record数据: {{ record }}
-                                    -->
-                                    <tr>
-                                        <td data-order="{{ record.timestamp }}">{{ record.time }}</td>
-                                        <td>{{ record.type }}</td>
-                                        <td>
-                                            <div class="text-truncate" style="max-width: 300px;" title="{{ record.question }}">
-                                                {{ record.question }}
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="qa-records" class="table table-striped table-hover dt-responsive nowrap" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>问题类型</th>
+                                    <th>问题内容</th>
+                                    <th>选项</th>
+                                    <th>AI答案</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <!-- 
+                                调试信息:
+                                record类型: {{ record.__class__.__name__ }}
+                                record数据: {{ record }}
+                                -->
+                                <tr>
+                                    <td data-order="{{ record.timestamp }}">{{ record.time }}</td>
+                                    <td>{{ record.type }}</td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 300px;" title="{{ record.question }}">
+                                            {{ record.question }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 200px;" title="{{ record.options }}">
+                                            {{ record.options }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 200px;" title="{{ record.answer }}">
+                                            {{ record.answer }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info me-1" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}">详情</button>
+                                        <button class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">编辑</button>
+                                        <button class="btn btn-sm btn-danger delete-record" data-record-id="{{ record.id }}">删除</button>
+                                    </td>
+                                </tr>
+                                
+                                <!-- 每条记录的模态框 -->
+                                <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" role="dialog" aria-labelledby="detailModalLabel{{ loop.index }}" aria-modal="true">
+                                    <div class="modal-dialog modal-lg" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">问答详情</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-truncate" style="max-width: 200px;" title="{{ record.options }}">
-                                                {{ record.options }}
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <h6 id="question-label{{ loop.index }}">问题：</h6>
+                                                    <pre class="border rounded p-3 bg-light" aria-labelledby="question-label{{ loop.index }}">{{ record.question }}</pre>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <h6 id="type-label{{ loop.index }}">问题类型：</h6>
+                                                    <pre class="border rounded p-3 bg-light" aria-labelledby="type-label{{ loop.index }}">{{ record.type or '未指定' }}</pre>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <h6 id="options-label{{ loop.index }}">选项：</h6>
+                                                    <pre class="border rounded p-3 bg-light" aria-labelledby="options-label{{ loop.index }}">{{ record.options or '无' }}</pre>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <h6 id="answer-label{{ loop.index }}">答案：</h6>
+                                                    <pre class="border rounded p-3 bg-light" aria-labelledby="answer-label{{ loop.index }}">{{ record.answer }}</pre>
+                                                </div>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-truncate" style="max-width: 200px;" title="{{ record.answer }}">
-                                                {{ record.answer }}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info me-1" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}">详情</button>
-                                            <button class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">编辑</button>
-                                            <button class="btn btn-sm btn-danger delete-record" data-record-id="{{ record.id }}">删除</button>
-                                        </td>
-                                    </tr>
-                                    
-                                    <!-- 每条记录的模态框 -->
-                                    <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" role="dialog" aria-labelledby="detailModalLabel{{ loop.index }}" aria-modal="true">
-                                        <div class="modal-dialog modal-lg" role="document">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">问答详情</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <div class="mb-3">
-                                                        <h6 id="question-label{{ loop.index }}">问题：</h6>
-                                                        <pre class="border rounded p-3 bg-light" aria-labelledby="question-label{{ loop.index }}">{{ record.question }}</pre>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <h6 id="type-label{{ loop.index }}">问题类型：</h6>
-                                                        <pre class="border rounded p-3 bg-light" aria-labelledby="type-label{{ loop.index }}">{{ record.type or '未指定' }}</pre>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <h6 id="options-label{{ loop.index }}">选项：</h6>
-                                                        <pre class="border rounded p-3 bg-light" aria-labelledby="options-label{{ loop.index }}">{{ record.options or '无' }}</pre>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <h6 id="answer-label{{ loop.index }}">答案：</h6>
-                                                        <pre class="border rounded p-3 bg-light" aria-labelledby="answer-label{{ loop.index }}">{{ record.answer }}</pre>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-                                                </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
                                             </div>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <!-- 每条记录的编辑模态框 -->
-                                    <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" role="dialog" aria-labelledby="editModalLabel{{ loop.index }}" aria-modal="true">
-                                        <div class="modal-dialog modal-lg" role="document">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="editModalLabel{{ loop.index }}">编辑问答</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <form id="editForm{{ loop.index }}" action="/api/record/update" method="POST">
-                                                        <input type="hidden" name="record_id" value="{{ record.id }}">
-                                                        
-                                                        <div class="mb-3">
-                                                            <label for="edit-question-{{ loop.index }}" class="form-label">问题内容：</label>
-                                                            <textarea class="form-control" id="edit-question-{{ loop.index }}" name="question" rows="3">{{ record.question }}</textarea>
-                                                        </div>
-                                                        
-                                                        <div class="mb-3">
-                                                            <label for="edit-type-{{ loop.index }}" class="form-label">问题类型：</label>
-                                                            <select class="form-select" id="edit-type-{{ loop.index }}" name="type">
-                                                                <option value="" {% if not record.type %}selected{% endif %}>未指定</option>
-                                                                <option value="single" {% if record.type == 'single' %}selected{% endif %}>单选题</option>
-                                                                <option value="multiple" {% if record.type == 'multiple' %}selected{% endif %}>多选题</option>
-                                                                <option value="judgement" {% if record.type == 'judgement' %}selected{% endif %}>判断题</option>
-                                                                <option value="completion" {% if record.type == 'completion' %}selected{% endif %}>填空题</option>
-                                                            </select>
-                                                        </div>
-                                                        
-                                                        <div class="mb-3">
-                                                            <label for="edit-options-{{ loop.index }}" class="form-label">选项内容：</label>
-                                                            <textarea class="form-control" id="edit-options-{{ loop.index }}" name="options" rows="4">{{ record.options }}</textarea>
-                                                        </div>
-                                                        
-                                                        <div class="mb-3">
-                                                            <label for="edit-answer-{{ loop.index }}" class="form-label">答案：</label>
-                                                            <textarea class="form-control" id="edit-answer-{{ loop.index }}" name="answer" rows="2">{{ record.answer }}</textarea>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                                    <button type="button" class="btn btn-primary" onclick="submitEditForm('{{ loop.index }}')">保存</button>
-                                                </div>
+                                <!-- 每条记录的编辑模态框 -->
+                                <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" role="dialog" aria-labelledby="editModalLabel{{ loop.index }}" aria-modal="true">
+                                    <div class="modal-dialog modal-lg" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editModalLabel{{ loop.index }}">编辑问答</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <form id="editForm{{ loop.index }}" action="/api/record/update" method="POST">
+                                                    <input type="hidden" name="record_id" value="{{ record.id }}">
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="edit-question-{{ loop.index }}" class="form-label">问题内容：</label>
+                                                        <textarea class="form-control" id="edit-question-{{ loop.index }}" name="question" rows="3">{{ record.question }}</textarea>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="edit-type-{{ loop.index }}" class="form-label">问题类型：</label>
+                                                        <select class="form-select" id="edit-type-{{ loop.index }}" name="type">
+                                                            <option value="" {% if not record.type %}selected{% endif %}>未指定</option>
+                                                            <option value="single" {% if record.type == 'single' %}selected{% endif %}>单选题</option>
+                                                            <option value="multiple" {% if record.type == 'multiple' %}selected{% endif %}>多选题</option>
+                                                            <option value="judgement" {% if record.type == 'judgement' %}selected{% endif %}>判断题</option>
+                                                            <option value="completion" {% if record.type == 'completion' %}selected{% endif %}>填空题</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="edit-options-{{ loop.index }}" class="form-label">选项内容：</label>
+                                                        <textarea class="form-control" id="edit-options-{{ loop.index }}" name="options" rows="4">{{ record.options }}</textarea>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="edit-answer-{{ loop.index }}" class="form-label">答案：</label>
+                                                        <textarea class="form-control" id="edit-answer-{{ loop.index }}" name="answer" rows="2">{{ record.answer }}</textarea>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                <button type="button" class="btn btn-primary" onclick="submitEditForm('{{ loop.index }}')">保存</button>
                                             </div>
                                         </div>
                                     </div>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- 删除确认模态框 -->
-    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="deleteConfirmModalLabel">确认删除</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
-                </div>
-                <div class="modal-body">
-                    <p>您确定要删除这条记录吗？</p>
-                    <p class="text-danger"><strong>警告：</strong>此操作无法撤销，记录将从数据库中永久删除！</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
-                </div>
+</div>
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">确认删除</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除这条记录吗？</p>
+                <p class="text-danger"><strong>警告：</strong>此操作无法撤销，记录将从数据库中永久删除！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
             </div>
         </div>
     </div>
-
-    <footer class="footer mt-5 py-3 bg-light">
-        <div class="container text-center">
-            <p>EduBrain AI - 智能题库系统 v{{ version }}</p>
-            <p>Powered by OpenAI API | 作者：LynnGuo666</p>
-            <p><small>© 2024-2025 All Rights Reserved</small></p>
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/datatables.net-responsive@2.5.0/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/js/responsive.bootstrap5.min.js"></script>
-
-    <script>
-    $(document).ready(function() {
-        $('#qa-records').DataTable({
-            responsive: true,
-            order: [[0, 'desc']],
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/zh.json'
-            },
-            pageLength: 10,
-            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
-        });
-        
-        // 记录当前要删除的记录ID
-        let recordToDelete = null;
-        
-        // 为删除按钮添加点击事件
-        $('.delete-record').on('click', function() {
-            recordToDelete = $(this).data('record-id');
-            // 显示确认模态框
-            const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-            deleteModal.show();
-        });
-        
-        // 确认删除按钮的点击事件
-        $('#confirmDeleteBtn').on('click', function() {
-            if (recordToDelete) {
-                deleteRecord(recordToDelete);
-                // 隐藏模态框
-                bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
-            }
-        });
-    });
-
-    function clearCache() {
-        if (confirm('确定要清除所有缓存吗？')) {
-            fetch('/api/cache/clear', {
-                method: 'POST',
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('缓存已清除');
-                    location.reload();
-                } else {
-                    alert('清除缓存失败: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('操作失败: ' + error);
-            });
-        }
-    }
-    
-    function deleteRecord(recordId) {
-        fetch('/api/record/delete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                record_id: recordId
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('记录已删除');
-                location.reload();
-            } else {
-                alert('删除记录失败: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('操作失败: ' + error);
-        });
-    }
-    
-    function submitEditForm(index) {
-        // 确保索引是字符串类型
-        index = String(index);
-        
-        const formId = `editForm${index}`;
-        const form = document.getElementById(formId);
-        
-        const formData = new FormData(form);
-        const jsonData = {};
-        
-        for (let [key, value] of formData.entries()) {
-            // 如果是record_id，转为数字
-            if (key === 'record_id') {
-                jsonData[key] = parseInt(value, 10);
-            } else {
-                jsonData[key] = value;
-            }
-        }
-        
-        fetch('/api/record/update', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(jsonData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('更新成功');
-                location.reload();
-            } else {
-                alert('更新失败: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('操作失败: ' + error);
-        });
-    }
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

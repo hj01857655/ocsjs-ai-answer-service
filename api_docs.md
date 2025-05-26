@@ -114,23 +114,6 @@ AI题库服务是一个基于OpenAI API的问题解答服务，专为[OCS (Onlin
 ]
 ```
 
-## 安全设置
-
-如果你想增加安全性，可以在`config.json`文件中设置访问令牌：
-
-```json
-{
-  "security": {
-    "access_token": "your_secret_token_here"
-  }
-}
-```
-
-设置后，所有API请求都需要包含此令牌，可以通过以下两种方式之一传递：
-
-1. HTTP头部: `X-Access-Token: your_secret_token_here`
-2. URL参数: `?token=your_secret_token_here`
-
 ## 注意事项
 
 1. **多选题答案格式**: 对于多选题，OCS期望的答案格式是用`#`分隔的选项，例如`A#B#C`。本服务会自动处理这个格式，将OpenAI返回的多选答案转换为此格式。

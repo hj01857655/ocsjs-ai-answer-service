@@ -1,157 +1,620 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <title>Token监控 - EduBrain AI</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">EduBrain AI</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/search">题目搜索</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard">统计面板</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/questions">题库管理</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/logs">系统日志</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/settings">系统设置</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/docs">API文档</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/tokens">Token监控</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    <div class="container mt-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Token监控</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table id="token-table" class="table table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Key</th>
-                                <th>状态</th>
-                                <th>剩余额度</th>
-                                <th>模型限制</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for token in tokens %}
-                            <tr>
-                                <td>{{ token.id }}</td>
-                                <td>{{ token.key[:8] }}****</td>
-                                <td>{{ '可用' if token.status==1 else '禁用' }}</td>
-                                <td>{{ token.remain_quota }}</td>
-                                <td>{{ token.model_limits }}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-info me-1" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}">详情</button>
-                                    <button class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">编辑</button>
-                                </td>
-                            </tr>
-                            <!-- 详情Modal -->
-                            <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" aria-labelledby="detailModalLabel{{ loop.index }}" aria-hidden="true">
-                              <div class="modal-dialog">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">Token详情</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                  </div>
-                                  <div class="modal-body">
-                                    <ul class='list-group'>
-                                        <li class='list-group-item'><b>ID:</b> {{ token.id }}</li>
-                                        <li class='list-group-item'><b>Key:</b> {{ token.key }}</li>
-                                        <li class='list-group-item'><b>状态:</b> {{ '可用' if token.status==1 else '禁用' }}</li>
-                                        <li class='list-group-item'><b>剩余额度:</b> {{ token.remain_quota }}</li>
-                                        <li class='list-group-item'><b>模型限制:</b> {{ token.model_limits }}</li>
-                                        <li class='list-group-item'><b>创建时间:</b> {{ token.created_time }}</li>
-                                        <li class='list-group-item'><b>有效期:</b> {{ token.expired_time }}</li>
-                                        <li class='list-group-item'><b>备注:</b> {{ token.name or '' }}</li>
-                                    </ul>
-                                  </div>
-                                  <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <!-- 编辑Modal -->
-                            <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" aria-labelledby="editModalLabel{{ loop.index }}" aria-hidden="true">
-                              <div class="modal-dialog">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="editModalLabel{{ loop.index }}">编辑Token</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                  </div>
-                                  <form class="token-edit-form" data-token-id="{{ token.id }}">
-                                    <div class="modal-body">
-                                      <input type='hidden' name='id' value='{{ token.id }}'>
-                                      <div class='mb-3'><label class='form-label'>Key</label><input class='form-control' value='{{ token.key }}' readonly></div>
-                                      <div class='mb-3'><label class='form-label'>状态</label>
-                                        <select class='form-select' name='status'>
-                                          <option value='1' {% if token.status==1 %}selected{% endif %}>可用</option>
-                                          <option value='0' {% if token.status==0 %}selected{% endif %}>禁用</option>
-                                        </select>
-                                      </div>
-                                      <div class='mb-3'><label class='form-label'>剩余额度</label><input class='form-control' name='remain_quota' value='{{ token.remain_quota }}'></div>
-                                      <div class='mb-3'><label class='form-label'>模型限制</label><input class='form-control' name='model_limits' value='{{ token.model_limits or '' }}'></div>
-                                      <div class='mb-3'><label class='form-label'>备注</label><input class='form-control' name='name' value='{{ token.name or '' }}'></div>
-                                      <div class='mb-3'><label class='form-label'>有效期</label><input class='form-control' name='expired_time' value='{{ token.expired_time }}'></div>
-                                    </div>
-                                    <div class="modal-footer">
-                                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                      <button type="submit" class="btn btn-primary">保存</button>
-                                    </div>
-                                  </form>
-                                </div>
-                              </div>
-                            </div>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+{% extends 'base.html' %}
+{% block title %}EduBrain AI - Token管理{% endblock %}
+{% block head %}
+<style>
+    .token-key {
+        font-family: monospace;
+        word-break: break-all;
+    }
+    .badge-status-1 {
+        background-color: #28a745;
+    }
+    .badge-status-0 {
+        background-color: #dc3545;
+    }
+    .copy-btn {
+        cursor: pointer;
+    }
+    .quota-bar {
+        height: 5px;
+        margin-top: 5px;
+    }
+    .progress-bar-remaining {
+        background-color: #28a745;
+    }
+    /* 预定义一些宽度类 */
+    .w-0 { width: 0%; }
+    .w-10 { width: 10%; }
+    .w-20 { width: 20%; }
+    .w-30 { width: 30%; }
+    .w-40 { width: 40%; }
+    .w-50 { width: 50%; }
+    .w-60 { width: 60%; }
+    .w-70 { width: 70%; }
+    .w-80 { width: 80%; }
+    .w-90 { width: 90%; }
+    .w-100 { width: 100%; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">API令牌管理</h5>
+                    <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#createTokenModal">
+                        <i class="bi bi-plus-circle"></i> 创建新令牌
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th width="5%">ID</th>
+                                    <th width="10%">名称</th>
+                                    <th width="30%">密钥</th>
+                                    <th width="10%">状态</th>
+                                    <th width="10%">配额</th>
+                                    <th width="15%">创建/过期</th>
+                                    <th width="10%">模型限制</th>
+                                    <th width="10%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tokensList">
+                                {% for token in tokens %}
+                                <tr>
+                                    <td>{{ token.id }}</td>
+                                    <td>{{ token.name or '-' }}</td>
+                                    <td class="token-key">
+                                        <div class="d-flex align-items-center">
+                                            <span class="text-truncate me-2">{{ token.key }}</span>
+                                            <i class="bi bi-clipboard copy-btn" data-clipboard-text="{{ token.key }}" title="复制"></i>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if token.status == 1 %}
+                                        <span class="badge badge-status-1">启用</span>
+                                        {% else %}
+                                        <span class="badge badge-status-0">禁用</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if token.unlimited_quota %}
+                                        <span class="badge bg-info">无限制</span>
+                                        {% else %}
+                                        <div>
+                                            {{ token.remain_quota|string|replace(',', '.') }}/{{ (token.remain_quota + token.used_quota)|string|replace(',', '.') }}
+                                        </div>
+                                        <div class="progress quota-bar">
+                                            {% set used_percent = (token.used_quota / (token.remain_quota + token.used_quota)) * 100 if (token.remain_quota + token.used_quota) > 0 else 0 %}
+                                            {% set remaining_percent = 100 - used_percent %}
+                                            <div class="progress-bar progress-bar-remaining" 
+                                                 role="progressbar" 
+                                                 data-percent="{{ remaining_percent }}"
+                                                 aria-valuenow="{{ remaining_percent }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100"></div>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div>创建: {{ token.created_time|string|replace(',', '.') }}</div>
+                                        {% if token.expired_time %}
+                                        <div>过期: {{ token.expired_time|string|replace(',', '.') }}</div>
+                                        {% else %}
+                                        <div>过期: 永不</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if token.model_limits_enabled %}
+                                        <span class="badge bg-primary">{{ token.model_limits }}</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">无限制</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-primary edit-token" data-token-id="{{ token.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger delete-token" data-token-id="{{ token.id }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center">暂无数据</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-    <script>
-    $(function() {
-        // 编辑表单提交
-        $('.token-edit-form').on('submit', function(e) {
-            e.preventDefault();
-            var form = $(this);
-            var data = {};
-            form.serializeArray().forEach(function(item){ data[item.name]=item.value; });
-            var tokenId = data.id;
-            $.ajax({
-                url: '/api/token/' + tokenId,
-                type: 'PUT',
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-                success: function(res) {
-                    if (res.success) {
-                        alert('保存成功');
-                        location.reload();
-                    } else {
-                        alert('保存失败: ' + (res.message||'未知错误'));
-                    }
-                },
-                error: function() {
-                    alert('请求失败');
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">令牌使用说明</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5>API令牌说明</h5>
+                        <p>API令牌用于访问OpenAI API服务，每个令牌有独立的配额和权限设置。</p>
+                        
+                        <h5>使用方法</h5>
+                        <p>在API请求中添加以下头部：</p>
+                        <pre><code>Authorization: Bearer YOUR_TOKEN_KEY</code></pre>
+                        
+                        <h5>限制说明</h5>
+                        <ul>
+                            <li><strong>配额</strong>: 每个令牌有固定配额，用完后无法继续使用</li>
+                            <li><strong>过期时间</strong>: 令牌在过期后将无法使用</li>
+                            <li><strong>模型限制</strong>: 可以限制令牌只能访问特定的模型</li>
+                            <li><strong>IP限制</strong>: 可以限制令牌只能从特定IP地址访问</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 创建令牌模态框 -->
+<div class="modal fade" id="createTokenModal" tabindex="-1" aria-labelledby="createTokenModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="createTokenModalLabel">创建新令牌</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createTokenForm">
+                    <div class="mb-3">
+                        <label for="tokenName" class="form-label">令牌名称</label>
+                        <input type="text" class="form-control" id="tokenName" name="name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="expiredDays" class="form-label">有效期(天)</label>
+                        <input type="number" class="form-control" id="expiredDays" name="expired_days" value="30">
+                        <div class="form-text">0表示永不过期</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quota" class="form-label">配额</label>
+                        <input type="number" class="form-control" id="quota" name="quota" value="500000">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="unlimitedQuota" name="unlimited">
+                        <label class="form-check-label" for="unlimitedQuota">无限配额</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modelLimits" class="form-label">模型限制</label>
+                        <select class="form-select" id="modelLimits" name="model_limits">
+                            {% for model in available_models %}
+                            <option value="{{ model }}">{{ model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="modelLimitsEnabled" name="model_limits_enabled">
+                        <label class="form-check-label" for="modelLimitsEnabled">启用模型限制</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="allowIps" class="form-label">允许的IP地址</label>
+                        <input type="text" class="form-control" id="allowIps" name="allow_ips">
+                        <div class="form-text">多个IP用逗号分隔，留空表示不限制</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="createTokenBtn">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑令牌模态框 -->
+<div class="modal fade" id="editTokenModal" tabindex="-1" aria-labelledby="editTokenModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="editTokenModalLabel">编辑令牌</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTokenForm">
+                    <input type="hidden" id="editTokenId" name="id">
+                    <div class="mb-3">
+                        <label for="editTokenName" class="form-label">令牌名称</label>
+                        <input type="text" class="form-control" id="editTokenName" name="name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTokenStatus" class="form-label">状态</label>
+                        <select class="form-select" id="editTokenStatus" name="status">
+                            <option value="1">启用</option>
+                            <option value="0">禁用</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editQuota" class="form-label">剩余配额</label>
+                        <input type="number" class="form-control" id="editQuota" name="quota">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="editUnlimitedQuota" name="unlimited_quota">
+                        <label class="form-check-label" for="editUnlimitedQuota">无限配额</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editModelLimits" class="form-label">模型限制</label>
+                        <select class="form-select" id="editModelLimits" name="model_limits">
+                            {% for model in available_models %}
+                            <option value="{{ model }}">{{ model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="editModelLimitsEnabled" name="model_limits_enabled">
+                        <label class="form-check-label" for="editModelLimitsEnabled">启用模型限制</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAllowIps" class="form-label">允许的IP地址</label>
+                        <input type="text" class="form-control" id="editAllowIps" name="allow_ips">
+                        <div class="form-text">多个IP用逗号分隔，留空表示不限制</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="updateTokenBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 确认删除模态框 -->
+<div class="modal fade" id="deleteTokenModal" tabindex="-1" aria-labelledby="deleteTokenModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteTokenModalLabel">确认删除</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除此令牌吗？此操作不可撤销。</p>
+                <input type="hidden" id="deleteTokenId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 结果提示模态框 -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultTitle">操作结果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="resultMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 从API获取token数据并渲染表格
+        fetch('/api/token/?p=0&size=10')
+            .then(response => response.json())
+            .then(result => {
+                if (result.success && result.data && result.data.length > 0) {
+                    const tokensList = document.getElementById('tokensList');
+                    tokensList.innerHTML = ''; // 清空原有内容
+                    
+                    // 渲染每个token行
+                    result.data.forEach(token => {
+                        const row = document.createElement('tr');
+                        
+                        // ID列
+                        const idCell = document.createElement('td');
+                        idCell.textContent = token.id;
+                        row.appendChild(idCell);
+                        
+                        // 名称列
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = token.name || '-';
+                        row.appendChild(nameCell);
+                        
+                        // 密钥列
+                        const keyCell = document.createElement('td');
+                        keyCell.className = 'token-key';
+                        keyCell.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <span class="text-truncate me-2">${token.key}</span>
+                                <i class="bi bi-clipboard copy-btn" data-clipboard-text="${token.key}" title="复制"></i>
+                            </div>
+                        `;
+                        row.appendChild(keyCell);
+                        
+                        // 状态列
+                        const statusCell = document.createElement('td');
+                        statusCell.innerHTML = token.status === 1 ? 
+                            '<span class="badge badge-status-1">启用</span>' : 
+                            '<span class="badge badge-status-0">禁用</span>';
+                        row.appendChild(statusCell);
+                        
+                        // 配额列
+                        const quotaCell = document.createElement('td');
+                        if (token.unlimited_quota) {
+                            quotaCell.innerHTML = '<span class="badge bg-info">无限制</span>';
+                        } else {
+                            const totalQuota = token.remain_quota + token.used_quota;
+                            const usedPercent = totalQuota > 0 ? (token.used_quota / totalQuota) * 100 : 0;
+                            const remainPercent = 100 - usedPercent;
+                            quotaCell.innerHTML = `
+                                <div>${token.remain_quota}/${totalQuota}</div>
+                                <div class="progress quota-bar">
+                                    <div class="progress-bar progress-bar-remaining" 
+                                         role="progressbar" 
+                                         data-percent="${remainPercent}"
+                                         aria-valuenow="${remainPercent}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100" 
+                                         style="width: ${remainPercent}%"></div>
+                                </div>
+                            `;
+                        }
+                        row.appendChild(quotaCell);
+                        
+                        // 创建/过期列
+                        const timeCell = document.createElement('td');
+                        const createdDate = new Date(token.created_time * 1000);
+                        const createdStr = createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString();
+                        
+                        let expiredStr = '永不';
+                        if (token.expired_time) {
+                            const expiredDate = new Date(token.expired_time * 1000);
+                            expiredStr = expiredDate.toLocaleDateString() + ' ' + expiredDate.toLocaleTimeString();
+                        }
+                        
+                        timeCell.innerHTML = `
+                            <div>创建: ${createdStr}</div>
+                            <div>过期: ${expiredStr}</div>
+                        `;
+                        row.appendChild(timeCell);
+                        
+                        // 模型限制列
+                        const modelCell = document.createElement('td');
+                        modelCell.innerHTML = token.model_limits_enabled ? 
+                            `<span class="badge bg-primary">${token.model_limits}</span>` : 
+                            '<span class="badge bg-secondary">无限制</span>';
+                        row.appendChild(modelCell);
+                        
+                        // 操作列
+                        const actionCell = document.createElement('td');
+                        actionCell.innerHTML = `
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary edit-token" data-token-id="${token.id}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-token" data-token-id="${token.id}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        `;
+                        row.appendChild(actionCell);
+                        
+                        tokensList.appendChild(row);
+                    });
+                    
+                    // 重新绑定事件
+                    bindEvents();
                 }
+            })
+            .catch(error => {
+                console.error('获取Token列表失败:', error);
+            });
+        
+        // 设置进度条宽度
+        document.querySelectorAll('[data-percent]').forEach(el => {
+            const percent = parseFloat(el.getAttribute('data-percent'));
+            el.style.width = percent + '%';
+        });
+
+        // 复制功能
+        function bindCopyEvents() {
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const text = this.getAttribute('data-clipboard-text');
+                    navigator.clipboard.writeText(text).then(() => {
+                        this.classList.remove('bi-clipboard');
+                        this.classList.add('bi-check2');
+                        setTimeout(() => {
+                            this.classList.remove('bi-check2');
+                            this.classList.add('bi-clipboard');
+                        }, 2000);
+                    });
+                });
+            });
+        }
+        
+        bindCopyEvents();
+
+        // 绑定所有事件
+        function bindEvents() {
+            bindCopyEvents();
+            
+            // 编辑令牌
+            document.querySelectorAll('.edit-token').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tokenId = this.getAttribute('data-token-id');
+                    // 从页面中获取令牌数据并填充表单
+                    const row = this.closest('tr');
+                    const name = row.cells[1].textContent;
+                    const status = row.cells[3].querySelector('.badge').textContent === '启用' ? 1 : 0;
+                    
+                    // 解析配额
+                    let quota = 0;
+                    let unlimited = false;
+                    const quotaText = row.cells[4].textContent.trim();
+                    if (quotaText.includes('无限制')) {
+                        unlimited = true;
+                    } else {
+                        const quotaParts = quotaText.split('/');
+                        if (quotaParts.length > 0) {
+                            quota = parseInt(quotaParts[0].trim()) || 0;
+                        }
+                    }
+                    
+                    // 解析模型限制
+                    const modelLimitsEnabled = !row.cells[6].textContent.trim().includes('无限制');
+                    const modelLimits = modelLimitsEnabled ? row.cells[6].querySelector('.badge').textContent : '';
+                    
+                    // 填充表单
+                    document.getElementById('editTokenId').value = tokenId;
+                    document.getElementById('editTokenName').value = name === '-' ? '' : name;
+                    document.getElementById('editTokenStatus').value = status;
+                    document.getElementById('editQuota').value = quota;
+                    document.getElementById('editUnlimitedQuota').checked = unlimited;
+                    document.getElementById('editModelLimitsEnabled').checked = modelLimitsEnabled;
+                    document.getElementById('editModelLimits').value = modelLimits;
+                    
+                    // 显示模态框
+                    new bootstrap.Modal(document.getElementById('editTokenModal')).show();
+                });
+            });
+            
+            // 删除令牌
+            document.querySelectorAll('.delete-token').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tokenId = this.getAttribute('data-token-id');
+                    document.getElementById('deleteTokenId').value = tokenId;
+                    new bootstrap.Modal(document.getElementById('deleteTokenModal')).show();
+                });
+            });
+        }
+
+        // 创建令牌
+        document.getElementById('createTokenBtn').addEventListener('click', function() {
+            const form = document.getElementById('createTokenForm');
+            const formData = new FormData(form);
+            const data = {
+                name: formData.get('name'),
+                expired_days: parseInt(formData.get('expired_days')) || 0,
+                quota: parseInt(formData.get('quota')) || 500000,
+                unlimited: formData.get('unlimited') === 'on',
+                model_limits: formData.get('model_limits'),
+                model_limits_enabled: formData.get('model_limits_enabled') === 'on',
+                allow_ips: formData.get('allow_ips')
+            };
+
+            fetch('/api/tokens', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showResult('成功', '令牌创建成功');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showResult('错误', result.message || '创建令牌失败');
+                }
+            })
+            .catch(error => {
+                showResult('错误', '请求出错: ' + error);
             });
         });
+
+        // 更新令牌
+        document.getElementById('updateTokenBtn').addEventListener('click', function() {
+            const form = document.getElementById('editTokenForm');
+            const formData = new FormData(form);
+            const tokenId = formData.get('id');
+            const data = {
+                name: formData.get('name'),
+                status: parseInt(formData.get('status')),
+                quota: parseInt(formData.get('quota')) || 0,
+                unlimited_quota: formData.get('unlimited_quota') === 'on',
+                model_limits: formData.get('model_limits'),
+                model_limits_enabled: formData.get('model_limits_enabled') === 'on',
+                allow_ips: formData.get('allow_ips')
+            };
+
+            fetch(`/api/tokens/${tokenId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showResult('成功', '令牌更新成功');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showResult('错误', result.message || '更新令牌失败');
+                }
+            })
+            .catch(error => {
+                showResult('错误', '请求出错: ' + error);
+            });
+        });
+
+        // 删除令牌
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            const tokenId = document.getElementById('deleteTokenId').value;
+
+            fetch(`/api/tokens/${tokenId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showResult('成功', '令牌已删除');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showResult('错误', result.message || '删除令牌失败');
+                }
+            })
+            .catch(error => {
+                showResult('错误', '请求出错: ' + error);
+            });
+        });
+
+        // 显示结果
+        function showResult(title, message) {
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultMessage').textContent = message;
+            new bootstrap.Modal(document.getElementById('resultModal')).show();
+        }
     });
-    </script>
-</body>
-</html> 
+</script>
+{% endblock %} 

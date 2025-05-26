@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EduBrain AI - 智能题库系统{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+        .sidebar {
+            min-width: 220px;
+            max-width: 240px;
+            background: linear-gradient(135deg, #007bff, #6610f2);
+            color: #fff;
+            min-height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1030;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar .nav-link {
+            color: #fff;
+            font-weight: 500;
+        }
+        .sidebar .nav-link.active, .sidebar .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: #ffd700;
+        }
+        .sidebar .sidebar-header {
+            padding: 1.5rem 1rem 1rem 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+        .sidebar .user-info {
+            margin-top: auto;
+            padding: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+        .main-content {
+            margin-left: 240px;
+            padding: 2rem 1rem 1rem 1rem;
+        }
+        @media (max-width: 991.98px) {
+            .sidebar {
+                position: fixed;
+                left: -240px;
+                transition: left 0.3s;
+            }
+            .sidebar.show {
+                left: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                padding-top: 4rem;
+            }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="bi bi-brain"></i> EduBrain AI
+        </div>
+        <ul class="nav flex-column px-2">
+            <li class="nav-item"><a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">首页</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/search' in request.path %}active{% endif %}" href="/search">题目搜索</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/dashboard' in request.path %}active{% endif %}" href="/dashboard">统计面板</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/questions' in request.path %}active{% endif %}" href="/questions">题库管理</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/logs' in request.path %}active{% endif %}" href="/logs">系统日志</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/settings' in request.path %}active{% endif %}" href="/settings">系统设置</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/docs' in request.path %}active{% endif %}" href="/docs">API文档</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/tokens' in request.path %}active{% endif %}" href="/tokens">Token监控</a></li>
+        </ul>
+        <div class="user-info">
+            {% if session.get('user_id') %}
+                <div><i class="bi bi-person-circle"></i> {{ session.get('username', '用户') }}</div>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm mt-2"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-light btn-sm me-2"><i class="bi bi-box-arrow-in-right"></i> 登录</a>
+                <a href="{{ url_for('register') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-person-plus"></i> 注册</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="main-content">
+        <button class="btn btn-primary d-lg-none mb-3" id="sidebarToggle"><i class="bi bi-list"></i> 菜单</button>
+        {% block content %}{% endblock %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 移动端侧边栏切换
+        document.getElementById('sidebarToggle').onclick = function() {
+            document.getElementById('sidebar').classList.toggle('show');
+        };
+        // 点击主内容区关闭侧边栏（移动端）
+        document.querySelector('.main-content').onclick = function() {
+            if(window.innerWidth < 992) {
+                document.getElementById('sidebar').classList.remove('show');
+            }
+        };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

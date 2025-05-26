@@ -179,23 +179,6 @@ python app.py
 }
 ```
 
-## 安全设置
-
-如果你想增加安全性，可以在`config.json`文件中设置访问令牌：
-
-```json
-{
-  "security": {
-    "access_token": "your_secret_token_here"
-  }
-}
-```
-
-设置后，所有API请求都需要包含此令牌，可以通过以下两种方式之一传递：
-
-1. HTTP头部: `X-Access-Token: your_secret_token_here`
-2. URL参数: `?token=your_secret_token_here`
-
 ## 部署建议
 
 ### 使用Gunicorn部署
