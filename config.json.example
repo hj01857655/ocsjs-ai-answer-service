@@ -14,7 +14,8 @@
     "level": "INFO"
   },
   "security": {
-    "access_token": null
+    "access_token": null,
+    "secret_key": "your_secret_key_here"
   },
   "response": {
     "max_tokens": 500,
@@ -38,5 +39,9 @@
     "port": 6379,
     "password": "",
     "db": 0
+  },
+  "ssl": {
+    "verify": false,
+    "comment": "如果使用第三方API服务，可能需要禁用SSL验证"
   }
 } 

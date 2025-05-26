@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduBrain AI - API文档</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .endpoint {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .method-get {
+            background-color: #61affe;
+            color: #fff;
+        }
+        .method-post {
+            background-color: #49cc90;
+            color: #fff;
+        }
+        pre {
+            background: #f6f8fa;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+            background-color: #f6f8fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #e83e8c;
+        }
+        pre code {
+            padding: 0;
+            background-color: transparent;
+            color: #333;
+        }
+        .alert-docs {
+            background-color: #ffedd5;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">EduBrain AI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/search">题目搜索</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">统计面板</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/questions">题库管理</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/logs">系统日志</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/settings">系统设置</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/docs">API文档</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/tokens">Token监控</a></li>
+                </ul>
+                <div class="d-flex">
+                    {% if session.get('user_id') %}
+                        <div class="dropdown">
+                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i> {{ session.get('username', '用户') }}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> 个人资料</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-light me-2"><i class="bi bi-box-arrow-in-right"></i> 登录</a>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-light"><i class="bi bi-person-plus"></i> 注册</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">EduBrain AI 题库服务 API文档</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-docs">
+                    <strong>配置系统更新通知:</strong> 本项目已从环境变量配置(.env)迁移到JSON配置文件。请使用config.json来配置服务，不再需要.env文件。详细配置选项请参考config.json.example。
+                </div>
+
+                <h2>概述</h2>
+                <p>EduBrain AI题库服务是一个基于OpenAI API的问题解答服务，专为<a href="https://github.com/ocsjs/ocsjs" target="_blank">OCS (Online Course Script)</a>设计，可以通过AI自动回答题目。此服务实现了与OCS AnswererWrapper兼容的API接口，方便用户将AI能力整合到OCS题库搜索中。</p>
+
+                <h2>接口详情</h2>
+
+                <h3>搜索接口</h3>
+                <div class="endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="method method-post">POST</span>
+                    <strong>/api/search</strong>
+                </div>
+                
+                <p>用于接收OCS发送的问题并返回AI生成的答案。</p>
+                
+                <h4>参数:</h4>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>参数名</th>
+                            <th>类型</th>
+                            <th>必填</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>title</td>
+                            <td>string</td>
+                            <td>是</td>
+                            <td>题目内容</td>
+                        </tr>
+                        <tr>
+                            <td>type</td>
+                            <td>string</td>
+                            <td>否</td>
+                            <td>题目类型 (single-单选, multiple-多选, judgement-判断, completion-填空)</td>
+                        </tr>
+                        <tr>
+                            <td>options</td>
+                            <td>string</td>
+                            <td>否</td>
+                            <td>选项内容，通常是A、B、C、D选项的文本</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>成功响应:</h4>
+                <pre><code>{
+  "code": 1,
+  "question": "问题内容",
+  "answer": "AI生成的答案"
+}</code></pre>
+
+                <h4>失败响应:</h4>
+                <pre><code>{
+  "code": 0,
+  "msg": "错误信息"
+}</code></pre>
+
+                <h3>健康检查接口</h3>
+                <div class="endpoint">
+                    <span class="method method-get">GET</span>
+                    <strong>/api/health</strong>
+                </div>
+                
+                <p>用于检查服务运行状态。</p>
+                
+                <h4>响应:</h4>
+                <pre><code>{
+  "status": "ok",
+  "message": "AI题库服务运行正常",
+  "version": "1.0.0",
+  "cache_enabled": true,
+  "model": "gpt-3.5-turbo"
+}</code></pre>
+
+                <h3>缓存清理接口</h3>
+                <div class="endpoint">
+                    <span class="method method-post">POST</span>
+                    <strong>/api/cache/clear</strong>
+                </div>
+                
+                <p>用于清理服务缓存的答案。</p>
+                
+                <h4>响应:</h4>
+                <pre><code>{
+  "success": true,
+  "message": "缓存已清除，共123条记录"
+}</code></pre>
+
+                <h3>统计信息接口</h3>
+                <div class="endpoint">
+                    <span class="method method-get">GET</span>
+                    <strong>/api/stats</strong>
+                </div>
+                
+                <p>获取服务运行统计信息。</p>
+                
+                <h4>响应:</h4>
+                <pre><code>{
+  "version": "1.0.0",
+  "uptime": 1621234567.89,
+  "model": "gpt-3.5-turbo",
+  "cache_enabled": true,
+  "cache_size": 123,
+  "qa_records_count": 456
+}</code></pre>
+
+                <h2>OCS配置示例</h2>
+                <p>在OCS的自定义题库配置中添加如下配置:</p>
+                
+                <pre><code>[
+  {
+    "name": "EduBrain AI智能题库",
+    "homepage": "https://github.com/yourusername/edubrain-ai",
+    "url": "http://localhost:5000/api/search",
+    "method": "get",
+    "contentType": "json",
+    "data": {
+      "title": "${title}",
+      "type": "${type}",
+      "options": "${options}"
+    },
+    "handler": "return (res)=> res.code === 1 ? [res.question, res.answer] : [res.msg, undefined]"
+  }
+]</code></pre>
+
+                <h2>安全设置</h2>
+                <p>如果你想增加安全性，可以在<code>config.json</code>文件中设置访问令牌:</p>
+                
+                <pre><code>{
+  "security": {
+    "access_token": "your_secret_token_here"
+  }
+}</code></pre>
+
+                <p>设置后，所有API请求都需要包含此令牌，可以通过以下两种方式之一传递:</p>
+                <ol>
+                    <li>HTTP头部: <code>X-Access-Token: your_secret_token_here</code></li>
+                    <li>URL参数: <code>?token=your_secret_token_here</code></li>
+                </ol>
+
+                <h2>注意事项</h2>
+                <ol>
+                    <li><strong>多选题答案格式</strong>: 对于多选题，OCS期望的答案格式是用<code>#</code>分隔的选项，例如<code>A#B#C</code>。本服务会自动处理这个格式，将OpenAI返回的多选答案转换为此格式。</li>
+                    <li><strong>API请求限制</strong>: 注意OpenAI API有使用限制和费用。确保你的账户有足够的额度来处理预期的请求量。</li>
+                    <li><strong>网络连接</strong>: 确保部署此服务的服务器能够访问OpenAI API（api.openai.com）。某些地区可能需要代理服务。</li>
+                    <li><strong>题库域名</strong>: 根据OCS文档说明，需要将题库配置中<code>homepage</code>以及<code>url</code>所涉及到的域名，在脚本头部元信息<code>@connect</code>中新增，否则无法请求到数据。</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-5 py-3 bg-light">
+        <div class="container text-center">
+            <p class="text-muted">Copyright &copy; {{ current_year }} EduBrain AI. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

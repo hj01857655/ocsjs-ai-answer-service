@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Token监控 - EduBrain AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">EduBrain AI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/search">题目搜索</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">统计面板</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/questions">题库管理</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/logs">系统日志</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/settings">系统设置</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/docs">API文档</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/tokens">Token监控</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Token监控</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="token-table" class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Key</th>
+                                <th>状态</th>
+                                <th>剩余额度</th>
+                                <th>模型限制</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for token in tokens %}
+                            <tr>
+                                <td>{{ token.id }}</td>
+                                <td>{{ token.key[:8] }}****</td>
+                                <td>{{ '可用' if token.status==1 else '禁用' }}</td>
+                                <td>{{ token.remain_quota }}</td>
+                                <td>{{ token.model_limits }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info me-1" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}">详情</button>
+                                    <button class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">编辑</button>
+                                </td>
+                            </tr>
+                            <!-- 详情Modal -->
+                            <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" aria-labelledby="detailModalLabel{{ loop.index }}" aria-hidden="true">
+                              <div class="modal-dialog">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">Token详情</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <ul class='list-group'>
+                                        <li class='list-group-item'><b>ID:</b> {{ token.id }}</li>
+                                        <li class='list-group-item'><b>Key:</b> {{ token.key }}</li>
+                                        <li class='list-group-item'><b>状态:</b> {{ '可用' if token.status==1 else '禁用' }}</li>
+                                        <li class='list-group-item'><b>剩余额度:</b> {{ token.remain_quota }}</li>
+                                        <li class='list-group-item'><b>模型限制:</b> {{ token.model_limits }}</li>
+                                        <li class='list-group-item'><b>创建时间:</b> {{ token.created_time }}</li>
+                                        <li class='list-group-item'><b>有效期:</b> {{ token.expired_time }}</li>
+                                        <li class='list-group-item'><b>备注:</b> {{ token.name or '' }}</li>
+                                    </ul>
+                                  </div>
+                                  <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <!-- 编辑Modal -->
+                            <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" aria-labelledby="editModalLabel{{ loop.index }}" aria-hidden="true">
+                              <div class="modal-dialog">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="editModalLabel{{ loop.index }}">编辑Token</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <form class="token-edit-form" data-token-id="{{ token.id }}">
+                                    <div class="modal-body">
+                                      <input type='hidden' name='id' value='{{ token.id }}'>
+                                      <div class='mb-3'><label class='form-label'>Key</label><input class='form-control' value='{{ token.key }}' readonly></div>
+                                      <div class='mb-3'><label class='form-label'>状态</label>
+                                        <select class='form-select' name='status'>
+                                          <option value='1' {% if token.status==1 %}selected{% endif %}>可用</option>
+                                          <option value='0' {% if token.status==0 %}selected{% endif %}>禁用</option>
+                                        </select>
+                                      </div>
+                                      <div class='mb-3'><label class='form-label'>剩余额度</label><input class='form-control' name='remain_quota' value='{{ token.remain_quota }}'></div>
+                                      <div class='mb-3'><label class='form-label'>模型限制</label><input class='form-control' name='model_limits' value='{{ token.model_limits or '' }}'></div>
+                                      <div class='mb-3'><label class='form-label'>备注</label><input class='form-control' name='name' value='{{ token.name or '' }}'></div>
+                                      <div class='mb-3'><label class='form-label'>有效期</label><input class='form-control' name='expired_time' value='{{ token.expired_time }}'></div>
+                                    </div>
+                                    <div class="modal-footer">
+                                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                      <button type="submit" class="btn btn-primary">保存</button>
+                                    </div>
+                                  </form>
+                                </div>
+                              </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script>
+    $(function() {
+        // 编辑表单提交
+        $('.token-edit-form').on('submit', function(e) {
+            e.preventDefault();
+            var form = $(this);
+            var data = {};
+            form.serializeArray().forEach(function(item){ data[item.name]=item.value; });
+            var tokenId = data.id;
+            $.ajax({
+                url: '/api/token/' + tokenId,
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    if (res.success) {
+                        alert('保存成功');
+                        location.reload();
+                    } else {
+                        alert('保存失败: ' + (res.message||'未知错误'));
+                    }
+                },
+                error: function() {
+                    alert('请求失败');
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html> 

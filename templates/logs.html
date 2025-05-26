@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduBrain AI - 系统日志</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .log-container {
+            height: 75vh;
+            overflow-y: auto;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 1rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .log-toolbar {
+            padding: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+        }
+        .log-error { color: #ff6b6b; }
+        .log-warning { color: #ffd166; }
+        .log-info { color: #9fc5e8; }
+        .log-debug { color: #9fc5e8; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">EduBrain AI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/search">题目搜索</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">统计面板</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/questions">题库管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/logs">系统日志</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings">系统设置</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/docs">API文档</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    {% if session.get('user_id') %}
+                        <div class="dropdown">
+                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i> {{ session.get('username', '用户') }}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> 个人资料</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-light me-2"><i class="bi bi-box-arrow-in-right"></i> 登录</a>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-light"><i class="bi bi-person-plus"></i> 注册</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">系统日志</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="log-toolbar">
+                            <div>
+                                <button id="refreshBtn" class="btn btn-sm btn-primary">刷新日志</button>
+                                <button id="clearViewBtn" class="btn btn-sm btn-secondary">清空视图</button>
+                                <button id="downloadBtn" class="btn btn-sm btn-info">下载日志</button>
+                            </div>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="showErrorCheck" checked>
+                                    <label class="form-check-label" for="showErrorCheck">错误</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="showWarningCheck" checked>
+                                    <label class="form-check-label" for="showWarningCheck">警告</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="showInfoCheck" checked>
+                                    <label class="form-check-label" for="showInfoCheck">信息</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="showDebugCheck" checked>
+                                    <label class="form-check-label" for="showDebugCheck">调试</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="logView" class="log-container">{{ log_content|safe }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-5 py-3 bg-light">
+        <div class="container text-center">
+            <p>EduBrain AI - 智能题库系统 v{{ version }}</p>
+            <p>Powered by OpenAI API | 作者：LynnGuo666</p>
+            <p><small>© 2024-2025 All Rights Reserved</small></p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    
+    <script>
+    $(document).ready(function() {
+        // 高亮不同级别的日志
+        highlightLogs();
+        
+        // 滚动到底部
+        scrollToBottom();
+        
+        // 刷新日志按钮
+        $('#refreshBtn').click(function() {
+            location.reload();
+        });
+        
+        // 自动刷新：每5秒刷新一次
+        setInterval(function() {
+            location.reload();
+        }, 5000);
+        
+        // 清空视图按钮
+        $('#clearViewBtn').click(function() {
+            $('#logView').empty();
+        });
+        
+        // 下载日志按钮
+        $('#downloadBtn').click(function() {
+            // 获取日志内容
+            const logContent = $('#logView').text();
+            // 创建Blob对象
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            // 创建下载链接
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'ai_service_log_' + new Date().toISOString().slice(0, 10) + '.txt';
+            // 模拟点击下载
+            link.click();
+            // 释放URL对象
+            URL.revokeObjectURL(link.href);
+        });
+        
+        // 过滤日志
+        $('#showErrorCheck, #showWarningCheck, #showInfoCheck, #showDebugCheck').change(function() {
+            filterLogs();
+        });
+    });
+    
+    function highlightLogs() {
+        // 获取日志容器
+        const logView = document.getElementById('logView');
+        // 获取日志内容
+        let content = logView.innerHTML;
+        
+        // 使用正则表达式高亮不同级别的日志
+        content = content.replace(/\b(ERROR)\b.*$/gm, '<span class="log-error">$&</span>');
+        content = content.replace(/\b(WARNING)\b.*$/gm, '<span class="log-warning">$&</span>');
+        content = content.replace(/\b(INFO)\b.*$/gm, '<span class="log-info">$&</span>');
+        content = content.replace(/\b(DEBUG)\b.*$/gm, '<span class="log-debug">$&</span>');
+        
+        // 更新日志容器内容
+        logView.innerHTML = content;
+    }
+    
+    function filterLogs() {
+        // 获取复选框状态
+        const showError = $('#showErrorCheck').is(':checked');
+        const showWarning = $('#showWarningCheck').is(':checked');
+        const showInfo = $('#showInfoCheck').is(':checked');
+        const showDebug = $('#showDebugCheck').is(':checked');
+        
+        // 筛选日志
+        $('.log-error').toggle(showError);
+        $('.log-warning').toggle(showWarning);
+        $('.log-info').toggle(showInfo);
+        $('.log-debug').toggle(showDebug);
+    }
+    
+    function scrollToBottom() {
+        const logView = document.getElementById('logView');
+        logView.scrollTop = logView.scrollHeight;
+    }
+    </script>
+</body>
+</html> 

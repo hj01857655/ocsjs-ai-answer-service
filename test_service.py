@@ -7,13 +7,26 @@ import requests
 import json
 import sys
 import os
-from dotenv import load_dotenv
 
-# 加载环境变量
-load_dotenv()
+# 读取配置文件
+def load_config():
+    """加载配置文件"""
+    config_file = os.path.join(os.path.dirname(__file__), 'config.json')
+    try:
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"读取配置文件出错: {str(e)}")
+    return {}
+
+# 加载配置
+config = load_config()
 
 # 服务URL
-SERVICE_URL = os.getenv("SERVICE_URL", "http://localhost:5000")
+host = config.get('service', {}).get('host', '0.0.0.0')
+port = config.get('service', {}).get('port', 5000)
+SERVICE_URL = f"http://{host}:{port}"
 
 def test_health():
     """测试健康检查接口"""

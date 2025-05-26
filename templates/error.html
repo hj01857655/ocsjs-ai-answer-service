@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduBrain AI - 错误</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .error-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .error-icon {
+            font-size: 4rem;
+            color: #dc3545;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">EduBrain AI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/search">题目搜索</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">统计面板</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/questions">题库管理</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/logs">系统日志</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/settings">系统设置</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/docs">API文档</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/tokens">Token监控</a></li>
+                </ul>
+                <div class="d-flex">
+                    {% if session.get('user_id') %}
+                        <div class="dropdown">
+                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i> {{ session.get('username', '用户') }}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> 个人资料</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-light me-2"><i class="bi bi-box-arrow-in-right"></i> 登录</a>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-light"><i class="bi bi-person-plus"></i> 注册</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container error-container mt-5">
+        <div class="card shadow">
+            <div class="card-body text-center py-5">
+                <div class="error-icon">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <h2 class="text-danger mb-4">出错了</h2>
+                <p class="lead mb-4">{{ error }}</p>
+                <div class="mt-4">
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> 返回上页
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="bi bi-house"></i> 回到首页
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

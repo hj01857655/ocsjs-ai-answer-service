@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduBrain AI - 题库管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .card-counter {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            padding: 25px;
+            background-color: #fff;
+            height: 120px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            cursor: default;
+            z-index: 1;
+        }
+        .card-counter:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .card-counter:hover i {
+            transform: scale(1.1);
+            opacity: 0.4;
+        }
+        .card-counter.primary {
+            background: linear-gradient(135deg, #0d6efd, #0a58ca);
+            color: #FFF;
+        }
+        .card-counter.success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: #FFF;
+        }
+        .card-counter.info {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: #FFF;
+        }
+        .card-counter::before {
+            content: '';
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            right: -25px;
+            top: -25px;
+            z-index: -1;
+        }
+        .card-counter::after {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            left: -15px;
+            bottom: -15px;
+            z-index: -1;
+        }
+        .card-counter i {
+            font-size: 3.5rem;
+            opacity: 0.3;
+            margin-right: 20px;
+            transition: all 0.3s ease;
+        }
+        .card-counter .count-numbers {
+            font-size: 2.2rem;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 5px;
+            line-height: 1.2;
+        }
+        .card-counter .count-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">EduBrain AI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/search">题目搜索</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">统计面板</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/questions">题库管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logs">系统日志</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings">系统设置</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/docs">API文档</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    {% if session.get('user_id') %}
+                        <div class="dropdown">
+                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i> {{ session.get('username', '用户') }}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> 个人资料</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> 退出登录</a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-light me-2"><i class="bi bi-box-arrow-in-right"></i> 登录</a>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-light"><i class="bi bi-person-plus"></i> 注册</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- 统计卡片 -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card-counter primary">
+                    <i class="bi bi-journal-richtext"></i>
+                    <div>
+                        <span class="count-numbers">{{ type_counts.all }}</span>
+                        <span class="count-name">题目总数</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-counter success">
+                    <i class="bi bi-ui-checks"></i>
+                    <div>
+                        <span class="count-numbers">{{ type_counts.single + type_counts.multiple }}</span>
+                        <span class="count-name">选择题数量</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-counter info">
+                    <i class="bi bi-patch-question"></i>
+                    <div>
+                        <span class="count-numbers">{{ type_counts.judgement + type_counts.completion }}</span>
+                        <span class="count-name">判断/填空题</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 搜索和筛选 -->
+        <div class="card mt-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">题库管理</h5>
+                <div>
+                    <button class="btn btn-success btn-sm me-1" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="bi bi-upload"></i> 导入
+                    </button>
+                    <a href="{{ url_for('export_questions') }}" class="btn btn-info btn-sm">
+                        <i class="bi bi-download"></i> 导出
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- 过滤和搜索表单 -->
+                <form id="searchForm" action="{{ url_for('questions') }}" method="GET" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="q" placeholder="搜索题目或答案..." value="{{ search_query }}">
+                                <button class="btn btn-outline-primary" type="submit">搜索</button>
+                                {% if search_query %}
+                                <a href="{{ url_for('questions') }}" class="btn btn-outline-secondary">清除</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="btn-group w-100" role="group">
+                                <a href="{{ url_for('questions') }}" class="btn btn-outline-primary {% if not current_type %}active{% endif %}">
+                                    全部 ({{ type_counts.all }})
+                                </a>
+                                <a href="{{ url_for('questions', type='single') }}" class="btn btn-outline-primary {% if current_type == 'single' %}active{% endif %}">
+                                    单选题 ({{ type_counts.single }})
+                                </a>
+                                <a href="{{ url_for('questions', type='multiple') }}" class="btn btn-outline-primary {% if current_type == 'multiple' %}active{% endif %}">
+                                    多选题 ({{ type_counts.multiple }})
+                                </a>
+                                <a href="{{ url_for('questions', type='judgement') }}" class="btn btn-outline-primary {% if current_type == 'judgement' %}active{% endif %}">
+                                    判断题 ({{ type_counts.judgement }})
+                                </a>
+                                <a href="{{ url_for('questions', type='completion') }}" class="btn btn-outline-primary {% if current_type == 'completion' %}active{% endif %}">
+                                    填空题 ({{ type_counts.completion }})
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- 批量操作 -->
+                <div class="mb-3">
+                    <button id="batchDeleteBtn" class="btn btn-danger" disabled>
+                        <i class="bi bi-trash"></i> 批量删除
+                    </button>
+                    <span id="selectedCount" class="ms-2 d-none">已选择 <span id="selectedNumber">0</span> 条记录</span>
+                </div>
+
+                <!-- 题库表格 -->
+                <div class="table-responsive">
+                    <table id="question-table" class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAll">
+                                    </div>
+                                </th>
+                                <th>ID</th>
+                                <th>类型</th>
+                                <th>问题</th>
+                                <th>答案</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input record-checkbox" type="checkbox" value="{{ record.id }}">
+                                    </div>
+                                </td>
+                                <td>{{ record.id }}</td>
+                                <td>
+                                    {% if record.type == 'single' %}
+                                        <span class="badge bg-success">单选题</span>
+                                    {% elif record.type == 'multiple' %}
+                                        <span class="badge bg-primary">多选题</span>
+                                    {% elif record.type == 'judgement' %}
+                                        <span class="badge bg-warning">判断题</span>
+                                    {% elif record.type == 'completion' %}
+                                        <span class="badge bg-info">填空题</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">未知</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 300px;" title="{{ record.question }}">
+                                        {{ record.question }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 200px;" title="{{ record.answer }}">
+                                        {{ record.answer }}
+                                    </div>
+                                </td>
+                                <td>{{ record.time }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info me-1" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}">
+                                        详情
+                                    </button>
+                                    <button class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">
+                                        编辑
+                                    </button>
+                                    <button class="btn btn-sm btn-danger delete-record" data-record-id="{{ record.id }}">
+                                        删除
+                                    </button>
+                                </td>
+                            </tr>
+                            
+                            <!-- 详情模态框 -->
+                            <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" aria-labelledby="detailModalLabel{{ loop.index }}">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-primary text-white">
+                                            <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">题目详情</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <h6>ID:</h6>
+                                                <p>{{ record.id }}</p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <h6>问题类型:</h6>
+                                                <p>
+                                                    {% if record.type == 'single' %}
+                                                        <span class="badge bg-success">单选题</span>
+                                                    {% elif record.type == 'multiple' %}
+                                                        <span class="badge bg-primary">多选题</span>
+                                                    {% elif record.type == 'judgement' %}
+                                                        <span class="badge bg-warning">判断题</span>
+                                                    {% elif record.type == 'completion' %}
+                                                        <span class="badge bg-info">填空题</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">未知</span>
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                            <div class="mb-3">
+                                                <h6>问题内容:</h6>
+                                                <div class="border rounded p-3 bg-light">{{ record.question }}</div>
+                                            </div>
+                                            {% if record.options %}
+                                            <div class="mb-3">
+                                                <h6>选项:</h6>
+                                                <div class="border rounded p-3 bg-light">{{ record.options }}</div>
+                                            </div>
+                                            {% endif %}
+                                            <div class="mb-3">
+                                                <h6>答案:</h6>
+                                                <div class="border rounded p-3 bg-light">{{ record.answer }}</div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <h6>创建时间:</h6>
+                                                <p>{{ record.time }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 编辑模态框 -->
+                            <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" aria-labelledby="editModalLabel{{ loop.index }}">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-warning">
+                                            <h5 class="modal-title" id="editModalLabel{{ loop.index }}">编辑题目</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form id="editForm{{ loop.index }}">
+                                                <input type="hidden" name="record_id" value="{{ record.id }}">
+                                                
+                                                <div class="mb-3">
+                                                    <label for="edit-type-{{ loop.index }}" class="form-label">问题类型:</label>
+                                                    <select class="form-select" id="edit-type-{{ loop.index }}" name="type">
+                                                        <option value="" {% if not record.type %}selected{% endif %}>未知</option>
+                                                        <option value="single" {% if record.type == 'single' %}selected{% endif %}>单选题</option>
+                                                        <option value="multiple" {% if record.type == 'multiple' %}selected{% endif %}>多选题</option>
+                                                        <option value="judgement" {% if record.type == 'judgement' %}selected{% endif %}>判断题</option>
+                                                        <option value="completion" {% if record.type == 'completion' %}selected{% endif %}>填空题</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="edit-question-{{ loop.index }}" class="form-label">问题内容:</label>
+                                                    <textarea class="form-control" id="edit-question-{{ loop.index }}" name="question" rows="3">{{ record.question }}</textarea>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="edit-options-{{ loop.index }}" class="form-label">选项内容:</label>
+                                                    <textarea class="form-control" id="edit-options-{{ loop.index }}" name="options" rows="3">{{ record.options }}</textarea>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="edit-answer-{{ loop.index }}" class="form-label">答案:</label>
+                                                    <textarea class="form-control" id="edit-answer-{{ loop.index }}" name="answer" rows="2">{{ record.answer }}</textarea>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                            <button type="button" class="btn btn-primary update-record-btn" data-record-id="{{ record.id }}" data-form-index="{{ loop.index }}">保存</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 分页 -->
+                {% if total_pages > 1 %}
+                <nav aria-label="分页导航">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('questions', page=page-1, per_page=per_page, q=search_query, type=current_type) }}">上一页</a>
+                        </li>
+                        
+                        {% for p in range(1, total_pages + 1) %}
+                            {% if p == page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ p }}</span>
+                                </li>
+                            {% elif p >= page - 2 and p <= page + 2 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('questions', page=p, per_page=per_page, q=search_query, type=current_type) }}">{{ p }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('questions', page=page+1, per_page=per_page, q=search_query, type=current_type) }}">下一页</a>
+                        </li>
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入模态框 -->
+    <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="importModalLabel">导入题库</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="importForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="importFile" class="form-label">选择CSV文件:</label>
+                            <input type="file" class="form-control" id="importFile" name="file" accept=".csv" required>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-text">
+                                <p>CSV文件格式要求:</p>
+                                <ul>
+                                    <li>第一行必须是标题行: ID,问题,类型,选项,答案,创建时间</li>
+                                    <li>类型列可以填写: 单选题,多选题,判断题,填空题,未知</li>
+                                    <li>文件编码必须是UTF-8</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-success" id="importButton">导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量删除确认模态框 -->
+    <div class="modal fade" id="batchDeleteModal" tabindex="-1" aria-labelledby="batchDeleteModalLabel">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="batchDeleteModalLabel">确认批量删除</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除选中的 <span id="deleteCount">0</span> 条记录吗？此操作不可撤销。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmBatchDelete">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 单条记录删除确认模态框 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel">确认删除</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除这条记录吗？此操作不可撤销。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作结果提示模态框 -->
+    <div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resultModalLabel">操作结果</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="resultMessage">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 错误模板页面 -->
+    {% if error %}
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" data-has-error="true">
+    {% else %}
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" data-has-error="false">
+    {% endif %}
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="errorModalLabel">错误</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {{ error }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入成功模态框 -->
+    <div class="modal fade" id="importSuccessModal" tabindex="-1" aria-hidden="true">
+        <!-- ... 模态框内容 ... -->
+    </div>
+
+    <footer class="footer mt-5 py-3 bg-light">
+        <div class="container text-center">
+            <p class="text-muted">Copyright &copy; {{ current_year }} EduBrain AI. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/datatables.net-responsive@2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/js/responsive.bootstrap5.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // 初始化DataTable
+            $('#question-table').DataTable({
+                responsive: true,
+                paging: false,
+                searching: false,
+                info: false,
+                language: {
+                    emptyTable: "没有找到记录",
+                    zeroRecords: "没有找到匹配的记录"
+                }
+            });
+            
+            // 如果有错误，显示错误模态框
+            if ($('#errorModal').data('has-error') === true) {
+                var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                errorModal.show();
+            }
+            
+            // 更新记录
+            $('.update-record-btn').click(function() {
+                const recordId = $(this).data('record-id');
+                const formIndex = $(this).data('form-index');
+                updateRecord(recordId, formIndex);
+            });
+            
+            // 单条记录删除
+            let deleteRecordId = null;
+            $('.delete-record').click(function() {
+                deleteRecordId = $(this).data('record-id');
+                var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                deleteModal.show();
+            });
+            
+            // 更新记录函数
+            function updateRecord(recordId, formIndex) {
+                const form = $(`#editForm${formIndex}`);
+                const formData = {
+                    record_id: recordId,
+                    question: form.find(`#edit-question-${formIndex}`).val(),
+                    type: form.find(`#edit-type-${formIndex}`).val(),
+                    options: form.find(`#edit-options-${formIndex}`).val(),
+                    answer: form.find(`#edit-answer-${formIndex}`).val()
+                };
+                
+                $.ajax({
+                    url: '/api/record/update',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        // 关闭编辑框
+                        $(`#editModal${formIndex}`).modal('hide');
+                        
+                        // 显示结果
+                        $('#resultMessage').text(response.message);
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                        
+                        // 成功后刷新页面
+                        if (response.success) {
+                            $('#resultModal').on('hidden.bs.modal', function() {
+                                location.reload();
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        // 关闭编辑框
+                        $(`#editModal${formIndex}`).modal('hide');
+                        
+                        // 显示错误
+                        let errorMessage = '更新失败';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMessage = response.message || errorMessage;
+                        } catch (e) {}
+                        
+                        $('#resultMessage').text(errorMessage);
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                    }
+                });
+            }
+            
+            $('#confirmDelete').click(function() {
+                if (deleteRecordId) {
+                    $.ajax({
+                        url: '/api/record/delete',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            record_id: deleteRecordId
+                        }),
+                        success: function(response) {
+                            // 关闭删除确认框
+                            $('#deleteModal').modal('hide');
+                            
+                            // 显示结果
+                            $('#resultMessage').text(response.message);
+                            var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                            resultModal.show();
+                            
+                            // 成功后刷新页面
+                            if (response.success) {
+                                $('#resultModal').on('hidden.bs.modal', function() {
+                                    location.reload();
+                                });
+                            }
+                        },
+                        error: function(xhr) {
+                            // 关闭删除确认框
+                            $('#deleteModal').modal('hide');
+                            
+                            // 显示错误
+                            let errorMessage = '删除失败';
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                errorMessage = response.message || errorMessage;
+                            } catch (e) {}
+                            
+                            $('#resultMessage').text(errorMessage);
+                            var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                            resultModal.show();
+                        }
+                    });
+                }
+            });
+            
+            // 批量删除
+            $('#selectAll').change(function() {
+                $('.record-checkbox').prop('checked', $(this).prop('checked'));
+                updateSelectedCount();
+            });
+            
+            $('.record-checkbox').change(function() {
+                updateSelectedCount();
+                
+                // 如果不是所有的都被选中，取消全选框的选中状态
+                if ($('.record-checkbox:checked').length !== $('.record-checkbox').length) {
+                    $('#selectAll').prop('checked', false);
+                } else if ($('.record-checkbox:checked').length === $('.record-checkbox').length) {
+                    $('#selectAll').prop('checked', true);
+                }
+            });
+            
+            function updateSelectedCount() {
+                const selectedCount = $('.record-checkbox:checked').length;
+                $('#selectedNumber').text(selectedCount);
+                
+                if (selectedCount > 0) {
+                    $('#selectedCount').removeClass('d-none');
+                    $('#batchDeleteBtn').prop('disabled', false);
+                } else {
+                    $('#selectedCount').addClass('d-none');
+                    $('#batchDeleteBtn').prop('disabled', true);
+                }
+            }
+            
+            $('#batchDeleteBtn').click(function() {
+                const selectedCount = $('.record-checkbox:checked').length;
+                $('#deleteCount').text(selectedCount);
+                
+                var batchDeleteModal = new bootstrap.Modal(document.getElementById('batchDeleteModal'));
+                batchDeleteModal.show();
+            });
+            
+            $('#confirmBatchDelete').click(function() {
+                const selectedIds = [];
+                $('.record-checkbox:checked').each(function() {
+                    selectedIds.push($(this).val());
+                });
+                
+                $.ajax({
+                    url: '/api/questions/batch-delete',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        record_ids: selectedIds
+                    }),
+                    success: function(response) {
+                        // 关闭批量删除确认框
+                        $('#batchDeleteModal').modal('hide');
+                        
+                        // 显示结果
+                        $('#resultMessage').text(response.message);
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                        
+                        // 成功后刷新页面
+                        if (response.success) {
+                            $('#resultModal').on('hidden.bs.modal', function() {
+                                location.reload();
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        // 关闭批量删除确认框
+                        $('#batchDeleteModal').modal('hide');
+                        
+                        // 显示错误
+                        let errorMessage = '批量删除失败';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMessage = response.message || errorMessage;
+                        } catch (e) {}
+                        
+                        $('#resultMessage').text(errorMessage);
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                    }
+                });
+            });
+            
+            // 导入题库
+            $('#importButton').click(function() {
+                const fileInput = $('#importFile')[0];
+                if (fileInput.files.length === 0) {
+                    $('#resultMessage').text('请选择要导入的CSV文件');
+                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                    resultModal.show();
+                    return;
+                }
+                
+                const file = fileInput.files[0];
+                if (!file.name.endsWith('.csv')) {
+                    $('#resultMessage').text('只支持导入CSV文件');
+                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                    resultModal.show();
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                $.ajax({
+                    url: '/api/questions/import',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        // 关闭导入框
+                        $('#importModal').modal('hide');
+                        
+                        // 显示结果
+                        $('#resultMessage').text(response.message);
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                        
+                        // 成功后刷新页面
+                        if (response.success) {
+                            $('#resultModal').on('hidden.bs.modal', function() {
+                                location.reload();
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        // 关闭导入框
+                        $('#importModal').modal('hide');
+                        
+                        // 显示错误
+                        let errorMessage = '导入失败';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMessage = response.message || errorMessage;
+                        } catch (e) {}
+                        
+                        $('#resultMessage').text(errorMessage);
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -1,5 +1,7 @@
 # AI题库服务API文档
 
+> **配置系统更新通知**: 本项目已从环境变量配置(.env)迁移到JSON配置文件。请使用config.json来配置服务，不再需要.env文件。详细配置选项请参考config.json.example。
+
 ## 概述
 
 AI题库服务是一个基于OpenAI API的问题解答服务，专为[OCS (Online Course Script)](https://github.com/ocsjs/ocsjs)设计，可以通过AI自动回答题目。此服务实现了与OCS AnswererWrapper兼容的API接口，方便用户将AI能力整合到OCS题库搜索中。
@@ -114,10 +116,14 @@ AI题库服务是一个基于OpenAI API的问题解答服务，专为[OCS (Onlin
 
 ## 安全设置
 
-如果你想增加安全性，可以在`.env`文件中设置访问令牌：
+如果你想增加安全性，可以在`config.json`文件中设置访问令牌：
 
-```
-ACCESS_TOKEN=your_secret_token_here
+```json
+{
+  "security": {
+    "access_token": "your_secret_token_here"
+  }
+}
 ```
 
 设置后，所有API请求都需要包含此令牌，可以通过以下两种方式之一传递：
