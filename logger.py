@@ -69,7 +69,7 @@ class Logger:
         return self.logger
     
     @staticmethod
-    def get_latest_logs(max_lines=1000):
+    def get_latest_logs(max_lines=2000):
         """
         获取最新的日志内容
         
@@ -80,27 +80,41 @@ class Logger:
             str: 日志内容
         """
         try:
-            # 获取当前日期
-            today = datetime.now().strftime("%Y-%m-%d")
-            log_file = os.path.join("logs", f"app.log")  # 使用固定的app.log文件
+            # 首先尝试读取app.log主日志文件
+            log_file = os.path.join("logs", "app.log")
             
             # 如果app.log不存在，尝试获取最近的日志文件
             if not os.path.exists(log_file):
-                log_file = os.path.join("logs", f"ai_answer_service_{today}.log")
-                
-                # 如果当天的日志不存在，尝试获取最近的日志文件
-                if not os.path.exists(log_file):
-                    log_dir = "logs"
-                    if os.path.exists(log_dir):
-                        log_files = [f for f in os.listdir(log_dir) if (f.startswith("ai_answer_service_") or f == "app.log") and f.endswith(".log")]
-                        log_files.sort(reverse=True)  # 按文件名降序排序
-                        if log_files:
-                            log_file = os.path.join(log_dir, log_files[0])
+                log_dir = "logs"
+                if os.path.exists(log_dir):
+                    log_files = [f for f in os.listdir(log_dir) if f.endswith(".log")]
+                    log_files.sort(reverse=True)  # 按文件名降序排序
+                    if log_files:
+                        log_file = os.path.join(log_dir, log_files[0])
             
             # 读取日志文件
             if os.path.exists(log_file):
                 with open(log_file, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
+                    # 先读取文件尾部的行
+                    lines = []
+                    try:
+                        # 获取文件大小
+                        f.seek(0, os.SEEK_END)
+                        file_size = f.tell()
+                        
+                        # 如果文件较大，只读取最后部分
+                        if file_size > 500000:  # 约500KB
+                            f.seek(-500000, os.SEEK_END)
+                            # 丢弃第一行，可能是不完整的
+                            f.readline()
+                        else:
+                            f.seek(0)
+                        
+                        lines = f.readlines()
+                    except Exception as e:
+                        lines.append(f"读取日志时出错: {str(e)}")
+                    
+                    # 只返回最后max_lines行
                     return ''.join(lines[-max_lines:]) if lines else "暂无日志记录"
             else:
                 return "日志文件不存在"

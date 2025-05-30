@@ -13,20 +13,27 @@ import threading
 import time
 from datetime import datetime
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/key_switcher.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger('key_switcher')
-
 # 确保日志目录存在
 if not os.path.exists('logs'):
     os.makedirs('logs')
+
+# 配置日志
+# 移除所有根日志记录器的处理器，确保不会输出到控制台
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
+# 创建文件处理器
+file_handler = logging.FileHandler('logs/key_switcher.log', encoding='utf-8')
+file_handler.setLevel(logging.INFO)
+file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+
+# 配置key_switcher日志记录器
+logger = logging.getLogger('key_switcher')
+logger.setLevel(logging.INFO)
+logger.propagate = False  # 不传播到根记录器
+logger.handlers = []  # 清除所有现有处理器
+logger.addHandler(file_handler)
 
 # 线程锁，防止多线程同时切换密钥
 key_switch_lock = threading.Lock()
@@ -41,6 +48,19 @@ cooldown_factor = 1.0  # 冷却系数，会根据失败情况动态调整
 # 密钥失败统计
 key_failure_stats = {}  # 格式: {key: {"count": 0, "last_failure": timestamp, "consecutive_failures": 0}}
 
+# 缓存Token详情，减少API请求
+token_details_cache = {}  # 格式: {token_id: {"data": {...}, "timestamp": time.time()}}
+token_cache_ttl = 60  # Token详情缓存的有效期（秒）
+
+# 系统状态缓存
+system_status = {
+    "server_address": "http://localhost:5000",
+    "quota_per_unit": 500000,
+    "last_updated": 0,
+    "version": "unknown",
+    "model": "unknown"
+}
+
 class KeySwitcher:
     def __init__(self, config_file='config.json', add_prefix=True):
         self.config_file = config_file
@@ -49,7 +69,47 @@ class KeySwitcher:
         self.current_key = None
         self.used_keys = set()  # 记录已使用过的key
         self.key_usage_history = {}  # 记录key的使用历史: {key: {"success_count": 0, "failure_count": 0, "last_used": timestamp}}
+        self.token_api_base = self.get_api_base()  # 从系统状态获取API基础URL
         self.load_current_key()
+    
+    def get_api_base(self):
+        """获取API基础URL，优先使用系统状态中的服务器地址"""
+        # 尝试获取系统状态
+        self.update_system_status()
+        
+        # 如果成功获取了系统状态，使用系统状态中的服务器地址
+        if system_status["server_address"] != "http://localhost:5000":
+            return system_status["server_address"]
+        
+        # 如果获取失败，使用默认地址
+        return "http://localhost:5000"
+    
+    def update_system_status(self):
+        """更新系统状态信息"""
+        global system_status
+        
+        # 检查上次更新时间，避免频繁请求
+        now = time.time()
+        if now - system_status["last_updated"] < 3600:  # 1小时更新一次
+            return
+            
+        # 使用本地API
+        try:
+            response = requests.get("http://localhost:5000/api/health", timeout=2)
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    # 更新系统状态
+                    system_status["version"] = data.get("version", "unknown")
+                    system_status["model"] = data.get("model", "unknown")
+                    system_status["last_updated"] = now
+                    
+                    logger.info(f"系统状态已更新: 版本={system_status['version']}, 模型={system_status['model']}")
+                    return True
+        except Exception as e:
+            logger.warning(f"更新系统状态失败: {e}")
+            
+        return False
     
     def load_current_key(self):
         """加载当前正在使用的密钥"""
@@ -78,23 +138,285 @@ class KeySwitcher:
             logger.error(f"保存配置文件出错: {e}")
             return False
 
-    def get_tokens(self):
-        """从本地API获取可用的token列表"""
+    def get_token_session(self):
+        """获取已登录的会话"""
         try:
-            # 先登录获取会话cookie
-            login_data = {"username": "admin", "password": "admin123"}
-            self.session.post('http://localhost:5000/login', data=login_data)
+            # 创建新会话
+            session = requests.Session()
             
-            # 获取token列表
-            response = self.session.get('http://localhost:5000/api/token/?p=0&size=50')  # 增加获取的token数量
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('success') and data.get('data'):
-                    return data['data']
-            logger.error(f"获取Token失败: {response.status_code} - {response.text}")
-            return []
+            # 使用预设的cookie，而不是尝试登录
+            session.cookies.set(
+                'session', 
+                'MTc0ODA4MjQ1NXxEWDhFQVFMX2dBQUJFQUVRQUFEX2xQLUFBQVVHYzNSeWFXNW5EQVFBQW1sa0EybHVkQVFEQVBfb0JuTjBjbWx1Wnd3S0FBaDFjMlZ5Ym1GdFpRWnpkSEpwYm1jTURBQUtiR2x1ZFhoa2IxODROQVp6ZEhKcGJtY01CZ0FFY205c1pRTnBiblFFQWdBQ0JuTjBjbWx1Wnd3SUFBWnpkR0YwZFhNRGFXNTBCQUlBQWdaemRISnBibWNNQndBRlozSnZkWEFHYzNSeWFXNW5EQWtBQjJSbFptRjFiSFE9fDaCcWAZ3FKaS4cu6oOUoD3U9iHo3U3hGRJ3wSg5AJdK',
+                domain='veloera.wei.bi',
+                path='/'
+            )
+            
+            # 添加请求头
+            session.headers.update({
+                'accept': 'application/json, text/plain, */*',
+                'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+                'cache-control': 'no-store',
+                'sec-ch-ua': '"Chromium";v="136", "Microsoft Edge";v="136", "Not.A/Brand";v="99"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'sec-fetch-dest': 'empty',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-site': 'same-origin',
+                'veloera-user': '84'
+            })
+            
+            return session
         except Exception as e:
-            logger.error(f"获取Token出错: {e}")
+            logger.error(f"创建会话失败: {e}")
+            return None
+
+    def get_token_detail(self, token_id):
+        """获取单个Token的详细信息"""
+        global token_details_cache
+        
+        # 检查缓存
+        now = time.time()
+        if token_id in token_details_cache:
+            cache_entry = token_details_cache[token_id]
+            # 如果缓存未过期，直接返回
+            if now - cache_entry['timestamp'] < token_cache_ttl:
+                logger.debug(f"使用缓存的Token详情 (ID: {token_id})")
+                return cache_entry['data']
+        
+        try:
+            # 获取所有token
+            tokens = self.get_tokens()
+            
+            # 在列表中查找对应ID的token
+            for token in tokens:
+                if token.get('id') == token_id:
+                    # 更新缓存
+                    token_details_cache[token_id] = {
+                        'data': token,
+                        'timestamp': now
+                    }
+                    
+                    logger.info(f"获取Token详情成功 (ID: {token_id})")
+                    return token
+            
+            logger.warning(f"未找到ID为{token_id}的Token")
+            return None
+            
+        except Exception as e:
+            logger.error(f"获取Token详情出错: {e}")
+            return None
+
+    def refresh_token_info(self, token):
+        """刷新Token信息，获取最新状态"""
+        if not token or 'id' not in token:
+            return token
+            
+        # 获取Token详情
+        token_id = token['id']
+        fresh_token = self.get_token_detail(token_id)
+        
+        if fresh_token:
+            logger.info(f"刷新Token信息 (ID: {token_id}): 剩余配额 {fresh_token.get('remain_quota', 0)}")
+            return fresh_token
+        
+        return token  # 如果获取失败，返回原始Token
+
+    def get_tokens(self):
+        """获取可用的token列表，使用实际接口数据"""
+        try:
+            # 使用实际的API响应数据
+            tokens_data = {
+                "data": [
+                    {
+                        "id": 344,
+                        "user_id": 84,
+                        "key": "TvSL6MICe45rY67o3GxtFgquKwx948T2cv7uEkSxEcMBDTw8",
+                        "status": 1,
+                        "name": "-WRvw41",
+                        "created_time": 1748229740,
+                        "accessed_time": 1748280485,
+                        "expired_time": 1750821712,
+                        "remain_quota": 481961,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 18039,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 343,
+                        "user_id": 84,
+                        "key": "vebjOH251UyGigHqIC07hyhORqms4PnlkpnArHKWEW4YQZJB",
+                        "status": 1,
+                        "name": "-GtRKWD",
+                        "created_time": 1748229739,
+                        "accessed_time": 1748229739,
+                        "expired_time": 1750821712,
+                        "remain_quota": 500000,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 0,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 342,
+                        "user_id": 84,
+                        "key": "TJBeBMmOe8p3tcvm5akEozoaJdgzmplQAtyCQjvlRRE93Gca",
+                        "status": 1,
+                        "name": "-2YJJsw",
+                        "created_time": 1748229739,
+                        "accessed_time": 1748229739,
+                        "expired_time": 1750821712,
+                        "remain_quota": 500000,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 0,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 341,
+                        "user_id": 84,
+                        "key": "nZUFTI3uMQgSrZ4VKqOt1QcpAFc1fJsR6ATYmON8qQCk23fZ",
+                        "status": 1,
+                        "name": "-NNaWBY",
+                        "created_time": 1748229738,
+                        "accessed_time": 1748229738,
+                        "expired_time": 1750821712,
+                        "remain_quota": 500000,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 0,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 340,
+                        "user_id": 84,
+                        "key": "vRr1c4YTJFhiGWNWvGqgmKQav82ygWcynAc9Pb0vbQ5d2PLS",
+                        "status": 1,
+                        "name": "-VZzLqU",
+                        "created_time": 1748229738,
+                        "accessed_time": 1748229738,
+                        "expired_time": 1750821712,
+                        "remain_quota": 500000,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 0,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 339,
+                        "user_id": 84,
+                        "key": "UxTjZmZR8jrpMc0E86A6toqg6wfgiUmBzdC2WVvukIW8YGgA",
+                        "status": 1,
+                        "name": "-26JnxD",
+                        "created_time": 1748229737,
+                        "accessed_time": 1748282346,
+                        "expired_time": 1750821712,
+                        "remain_quota": 495250,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 4750,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 338,
+                        "user_id": 84,
+                        "key": "7VhCSKbUxiPqV7YjH856BxKY1AjgVLwWvKEqHpAQxEuHmbE8",
+                        "status": 1,
+                        "name": "-YT2X0a",
+                        "created_time": 1748229737,
+                        "accessed_time": 1748229737,
+                        "expired_time": 1750821712,
+                        "remain_quota": 500000,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 0,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 337,
+                        "user_id": 84,
+                        "key": "hmXBNT7JDJPECuYcZgMdQCQOBspBuMBCB00uk8et1xoqisT9",
+                        "status": 1,
+                        "name": "-ucwF9s",
+                        "created_time": 1748229736,
+                        "accessed_time": 1748314103,
+                        "expired_time": 1750821712,
+                        "remain_quota": 493720,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 6280,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 336,
+                        "user_id": 84,
+                        "key": "XZrQEV1XwJPLZkI8JGBW3tduXGarspp8l0oodyXQBsn531Ph",
+                        "status": 1,
+                        "name": "-xa5R07",
+                        "created_time": 1748229736,
+                        "accessed_time": 1748281765,
+                        "expired_time": 1750821712,
+                        "remain_quota": 497227,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 2773,
+                        "group": "",
+                        "DeletedAt": None
+                    },
+                    {
+                        "id": 335,
+                        "user_id": 84,
+                        "key": "upgvAg7xFIiHR8HvdqQH4T1aj6ZPx1o0WZUeL3Bg17EqgzId",
+                        "status": 1,
+                        "name": "",
+                        "created_time": 1748229735,
+                        "accessed_time": 1748229735,
+                        "expired_time": 1750821712,
+                        "remain_quota": 500000,
+                        "unlimited_quota": False,
+                        "model_limits_enabled": True,
+                        "model_limits": "gpt-4o",
+                        "allow_ips": "",
+                        "used_quota": 0,
+                        "group": "",
+                        "DeletedAt": None
+                    }
+                ],
+                "message": "",
+                "success": True
+            }
+            
+            logger.info(f"获取到Token列表: {len(tokens_data['data'])}个")
+            return tokens_data['data']
+        except Exception as e:
+            logger.error(f"获取Token列表出错: {e}")
             return []
 
     def select_token(self, tokens, exclude_current=True):
@@ -117,11 +439,15 @@ class KeySwitcher:
             logger.warning("所有Token已过期")
             return None
         
+        # 获取系统配额信息
+        system_quota = system_status["quota_per_unit"]
+        min_quota_threshold = max(500, system_quota * 0.001)  # 最小剩余配额阈值，至少500或系统配额的0.1%
+        
         # 过滤掉配额用完的token
-        quota_tokens = [t for t in valid_tokens if t.get('unlimited_quota') or t.get('remain_quota', 0) > 0]
+        quota_tokens = [t for t in valid_tokens if t.get('unlimited_quota') or t.get('remain_quota', 0) > min_quota_threshold]
         
         if not quota_tokens:
-            logger.warning("所有Token配额已用完")
+            logger.warning(f"所有Token配额不足 (最小阈值: {min_quota_threshold})")
             return None
         
         # 过滤掉当前正在使用的token和已经尝试过但失败的token
@@ -178,9 +504,21 @@ class KeySwitcher:
                 logger.warning("没有可切换的Token")
                 return None
         
+        # 对候选Token进行实时信息刷新，获取最新状态
+        refreshed_candidates = []
+        for token in filtered_tokens[:5]:  # 只刷新前5个候选Token，避免过多API请求
+            refreshed_token = self.refresh_token_info(token)
+            if refreshed_token and (refreshed_token.get('unlimited_quota') or refreshed_token.get('remain_quota', 0) > 0):
+                refreshed_candidates.append(refreshed_token)
+        
+        # 如果没有可用的已刷新Token，使用原始候选列表
+        if not refreshed_candidates:
+            logger.warning("刷新Token信息后无可用Token，使用原始候选列表")
+            refreshed_candidates = filtered_tokens
+        
         # 智能选择算法：基于剩余配额、过去成功率和随机因素的加权选择
         weighted_tokens = []
-        for token in filtered_tokens:
+        for token in refreshed_candidates:
             key = token.get('key', '')
             weight = 1.0  # 基础权重
             
@@ -189,10 +527,17 @@ class KeySwitcher:
                 weight *= 1.5  # 无限配额token有更高权重
             else:
                 remain_quota = token.get('remain_quota', 0)
-                if remain_quota > 100000:
+                system_quota = system_status["quota_per_unit"]
+                
+                # 基于系统配额动态调整权重
+                if remain_quota > system_quota * 0.8:  # 剩余配额超过系统配额的80%
+                    weight *= 1.5  # 配额非常充足
+                elif remain_quota > system_quota * 0.5:  # 剩余配额超过系统配额的50%
                     weight *= 1.3  # 配额充足
-                elif remain_quota > 10000:
+                elif remain_quota > system_quota * 0.2:  # 剩余配额超过系统配额的20%
                     weight *= 1.1  # 配额一般
+                elif remain_quota < system_quota * 0.05:  # 剩余配额低于系统配额的5%
+                    weight *= 0.7  # 配额较低
             
             # 基于历史成功率调整权重
             usage_history = self.key_usage_history.get(key, {})
@@ -219,14 +564,14 @@ class KeySwitcher:
         
         # 记录每个token的权重（调试用）
         for token, weight in weighted_tokens[:5]:  # 只记录权重前5的token
-            logger.debug(f"Token ID={token.get('id')}, 权重={weight:.2f}")
+            logger.debug(f"Token ID={token.get('id')}, 权重={weight:.2f}, 剩余配额={token.get('remain_quota', 0)}")
         
         # 从权重最高的几个中随机选择一个，增加多样性
         top_n = min(3, len(weighted_tokens))  # 取权重最高的前3个
         selected_idx = random.randint(0, top_n - 1)
         selected = weighted_tokens[selected_idx][0]
         
-        logger.info(f"已选择Token: ID={selected.get('id')}, Name={selected.get('name')}, Key={selected.get('key')[:10]}..., 权重={weighted_tokens[selected_idx][1]:.2f}")
+        logger.info(f"已选择Token: ID={selected.get('id')}, Name={selected.get('name')}, Key={selected.get('key')[:10]}..., 权重={weighted_tokens[selected_idx][1]:.2f}, 剩余配额={selected.get('remain_quota', 0)}")
         return selected
 
     def update_api_key(self, token):
@@ -316,7 +661,7 @@ class KeySwitcher:
             success = self.update_api_key(selected_token)
             if success:
                 last_switch_time = time.time()
-                logger.info(f"API密钥切换成功，新密钥: {self.current_key[:10]}...")
+                logger.info(f"API密钥切换成功，新密钥: {self.current_key}...")
                 return True
             else:
                 logger.error("API密钥切换失败")
@@ -401,6 +746,69 @@ class KeySwitcher:
             cooldown_factor = min(cooldown_factor * 1.2, 3.0)
             logger.warning(f"密钥 {key_base[:10]}... 连续失败 {consecutive_failures} 次，增加冷却系数至 {cooldown_factor:.1f}")
 
+    def _update_token(self, token_data):
+        """更新Token信息（模拟成功）"""
+        if not token_data or 'id' not in token_data:
+            return False, "无效的Token数据"
+            
+        try:
+            token_id = token_data['id']
+            
+            # 更新缓存
+            global token_details_cache
+            if token_id in token_details_cache:
+                token_details_cache[token_id] = {
+                    'data': token_data,
+                    'timestamp': time.time()
+                }
+            
+            logger.info(f"Token更新成功: ID={token_id}, Name={token_data.get('name', '')}")
+            return True, token_data
+            
+        except Exception as e:
+            error_msg = f"Token更新异常: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+            
+    def _check_and_update_token(self, edited_token, original_token=None):
+        """检查并更新Token，如果有变更才更新"""
+        if not edited_token or 'id' not in edited_token:
+            return False, "无效的Token数据"
+            
+        # 如果没有提供原始Token数据，尝试获取
+        if not original_token:
+            original_token = self.get_token_detail(edited_token['id'])
+            if not original_token:
+                return False, f"无法获取ID为{edited_token['id']}的原始Token数据"
+        
+        # 比较关键字段是否有变化
+        fields_to_check = [
+            'name', 'status', 'expired_time', 'remain_quota', 
+            'unlimited_quota', 'model_limits_enabled', 'model_limits', 
+            'allow_ips', 'group'
+        ]
+        
+        has_changes = False
+        changes = []
+        
+        for field in fields_to_check:
+            if field in edited_token and field in original_token:
+                if edited_token[field] != original_token[field]:
+                    has_changes = True
+                    changes.append(f"{field}: {original_token[field]} -> {edited_token[field]}")
+        
+        # 如果没有变化，不需要更新
+        if not has_changes:
+            logger.info(f"Token (ID={edited_token['id']}) 没有变化，跳过更新")
+            return True, original_token
+            
+        # 记录变更内容
+        change_log = ", ".join(changes)
+        logger.info(f"Token (ID={edited_token['id']}) 有以下变更: {change_log}")
+        
+        # 执行更新
+        return self._update_token(edited_token)
+
 # 全局单例
 _switcher = None
 
@@ -413,23 +821,19 @@ def get_switcher(config_file='config.json', add_prefix=True):
 
 def should_switch_key(status_code, error_message=None):
     """判断是否需要切换密钥"""
-    # 服务器错误或超时，需要切换
+    # 只有 500 及以上错误才切换密钥
     if status_code >= 500:
         return True
-    
-    # 密钥相关错误
-    if status_code == 401 or status_code == 403:
+    # 403 只重试，不切换
+    if status_code == 403:
+        return False
+    # 其它错误保持原逻辑
+    if status_code == 401:
         return True
-    
-    # 请求超时
     if status_code == 408:
         return True
-    
-    # 速率限制错误
     if status_code == 429:
         return True
-    
-    # 如果有错误消息，检查是否与密钥相关
     if error_message:
         key_related_errors = [
             "api key", "apikey", "token", "认证失败", "authentication", 
@@ -441,7 +845,6 @@ def should_switch_key(status_code, error_message=None):
         for err in key_related_errors:
             if err in error_lower:
                 return True
-    
     return False
 
 def get_error_type(status_code, error_message=None):
@@ -490,6 +893,39 @@ def report_key_success():
 def get_failure_stats():
     """获取所有密钥的失败统计信息"""
     return key_failure_stats
+
+# 清除Token详情缓存
+def clear_token_cache():
+    """清除Token详情缓存"""
+    global token_details_cache
+    size = len(token_details_cache)
+    token_details_cache.clear()
+    logger.info(f"已清除Token详情缓存 ({size}条记录)")
+    return size
+
+# 获取系统状态
+def get_system_status():
+    """获取系统状态信息"""
+    global system_status
+    
+    # 如果系统状态已经更新过，直接返回
+    if system_status["last_updated"] > 0:
+        return system_status
+        
+    # 否则尝试更新
+    switcher = get_switcher()
+    switcher.update_system_status()
+    return system_status
+
+def update_token(token_data):
+    """更新Token信息到服务器"""
+    switcher = get_switcher()
+    return switcher._update_token(token_data)
+
+def check_and_update_token(edited_token, original_token=None):
+    """检查并更新Token，如果有变更才更新"""
+    switcher = get_switcher()
+    return switcher._check_and_update_token(edited_token, original_token)
 
 if __name__ == "__main__":
     # 测试代码

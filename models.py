@@ -190,19 +190,58 @@ def create_user(db, username, password, email=None, role='user', is_admin=False)
 # 数据库连接
 def init_db():
     """初始化数据库连接"""
-    engine = create_engine(Config.SQLALCHEMY_DATABASE_URI, pool_pre_ping=True)
-    # 创建表
-    Base.metadata.create_all(engine)
-    # 创建会话
-    Session = sessionmaker(bind=engine)
-    return Session()
+    try:
+        engine = create_engine(Config.SQLALCHEMY_DATABASE_URI, pool_pre_ping=True, pool_recycle=3600)
+        # 创建表
+        Base.metadata.create_all(engine)
+        # 创建会话工厂
+        return sessionmaker(bind=engine)
+    except Exception as e:
+        import logging
+        logging.getLogger('ai_answer_service').error(f"初始化数据库时出错: {str(e)}")
+        raise
 
-# 单例会话
-db_session = None
+# 会话工厂
+Session = None
 
 def get_db_session():
-    """获取数据库会话"""
-    global db_session
-    if db_session is None:
-        db_session = init_db()
-    return db_session 
+    """获取数据库会话
+    
+    注意：每次调用都会返回一个新的会话实例。使用后需要手动关闭或在请求结束时自动关闭。
+    """
+    global Session
+    try:
+        if Session is None:
+            Session = init_db()
+        return Session()
+    except Exception as e:
+        import logging
+        logging.getLogger('ai_answer_service').error(f"创建数据库会话时出错: {str(e)}")
+        return None
+
+def close_db_session(session):
+    """关闭数据库会话
+    
+    如果会话有未提交的事务，会先回滚再关闭。
+    """
+    if session:
+        try:
+            # 安全地回滚任何未提交的事务
+            try:
+                session.rollback()
+                import logging
+                logging.getLogger('ai_answer_service').debug("关闭数据库会话前回滚事务")
+            except Exception as rollback_error:
+                import logging
+                logging.getLogger('ai_answer_service').warning(f"回滚事务时出错: {str(rollback_error)}")
+                
+            # 关闭会话
+            session.close()
+        except Exception as e:
+            import logging
+            logging.getLogger('ai_answer_service').error(f"关闭数据库会话时出错: {str(e)}")
+            # 尝试强制关闭
+            try:
+                session.close()
+            except:
+                pass

@@ -161,24 +161,6 @@ python app.py
 }
 ```
 
-### 统计信息接口
-
-**URL**: `/api/stats`
-
-**方法**: `GET`
-
-**响应**:
-
-```json
-{
-  "version": "1.0.0",
-  "uptime": 1621234567.89,
-  "model": "gpt-3.5-turbo",
-  "cache_enabled": true,
-  "cache_size": 123
-}
-```
-
 ## 部署建议
 
 ### 使用Gunicorn部署
@@ -219,7 +201,7 @@ docker run -p 5000:5000 ai-answer-service
 
 如果遇到 `openai.APIConnectionError: Connection error` 错误，可能有以下原因：
 
-- **API基础URL配置问题**：确保config.json中的api_base URL格式正确，应以斜杠结尾
+- **API基础URL配置问题**：确保config.json中的api_base为OpenAI兼容API基础URL（如：https://veloera.wei.bi），无需/v1，结尾不加/也可
 - **SSL证书验证问题**：如果使用第三方API服务，可能需要禁用SSL验证
 - **网络连接问题**：检查网络连接，确保可以访问API服务器
 - **API密钥无效**：确认API密钥是否正确，是否适用于配置的API基础URL

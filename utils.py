@@ -3,11 +3,11 @@
 工具函数模块
 包含缓存管理、答案处理和OpenAI API调用等辅助功能
 """
-import json
 import time
-import os
 import hashlib
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
+from flask import session, redirect, render_template
+from functools import wraps
 
 class SimpleCache:
     """简单的内存缓存实现"""
@@ -172,3 +172,21 @@ def extract_answer(ai_response: str, question_type: str) -> str:
     
     # 默认返回完整响应
     return ai_response
+
+def login_required(view_func):
+    @wraps(view_func)
+    def wrapped_view(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect('/login')
+        return view_func(*args, **kwargs)
+    return wrapped_view
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def wrapped_view(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect('/login')
+        if not session.get('is_admin', False):
+            return render_template('error.html', error="您没有管理员权限访问此页面")
+        return view_func(*args, **kwargs)
+    return wrapped_view

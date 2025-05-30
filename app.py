@@ -14,57 +14,174 @@ import openai
 from datetime import datetime
 import functools
 import httpx
-import uuid
+import random
 
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, make_response
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from flask_cors import CORS
 from config import Config
 from utils import format_answer_for_ocs, parse_question_and_options, extract_answer
-from models import QARecord, UserSession, get_db_session, authenticate_user, create_user, get_user_by_id
+from models import QARecord, UserSession, get_db_session, close_db_session, get_user_by_id
 from cache import RedisCache
-from logger import Logger
 import key_switcher
+from routes.auth import auth_bp
+from routes.token import token_bp
+from routes.questions import questions_bp
+from routes.settings import settings_bp
+from routes.logs import logs_bp
+from token_sync import sync_tokens_to_config
+from apscheduler.schedulers.background import BackgroundScheduler
 
-# 配置日志 - 只在控制台显示ERROR级别日志
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.ERROR)
-console_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(console_format)
-
-# 文件日志处理器保持原来的配置
+# 配置日志系统
 if not os.path.exists('logs'):
     os.makedirs('logs')
-file_handler = logging.FileHandler(os.path.join('logs', 'app.log'), encoding='utf-8')
+
+# 配置主日志文件
+log_file = os.path.join('logs', 'app.log')
+file_handler = logging.FileHandler(log_file, encoding='utf-8')
 file_handler.setLevel(getattr(logging, Config.LOG_LEVEL))
 file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_format)
 
-# 配置根日志记录器
+# 移除所有根日志记录器的处理器
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
+# 配置根日志记录器，只输出到文件，不输出到控制台
 logging.basicConfig(
     level=getattr(logging, Config.LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[console_handler, file_handler]
+    handlers=[file_handler]
 )
+
+# 禁用控制台输出
+logging.root.handlers = [file_handler]
 
 # 禁用Flask自带的werkzeug日志记录器，仅显示ERROR级别
 werkzeug_logger = logging.getLogger('werkzeug')
 werkzeug_logger.setLevel(logging.ERROR)
+werkzeug_logger.propagate = False
+werkzeug_logger.handlers = []
+werkzeug_logger.addHandler(file_handler)
 
+# 禁用httpx库的日志输出到控制台，但保留到文件
+httpx_logger = logging.getLogger("httpx")
+httpx_logger.setLevel(logging.INFO)
+httpx_logger.propagate = False  # 不传播到父记录器
+httpx_logger.handlers = []
+httpx_logger.addHandler(file_handler)
+
+httpcore_logger = logging.getLogger("httpcore")
+httpcore_logger.setLevel(logging.INFO)
+httpcore_logger.propagate = False  # 不传播到父记录器
+httpcore_logger.handlers = []
+httpcore_logger.addHandler(file_handler)
+
+# 应用日志记录器
 logger = logging.getLogger('ai_answer_service')
+logger.propagate = False  # 不传播到父记录器
+logger.handlers = []
+logger.addHandler(file_handler)
 
 # 初始化应用
 app = Flask(__name__)
-CORS(app)  # 启用CORS支持
+# 使用更宽松的CORS配置，允许所有来源的请求
+# 这对于开发和测试非常有用，但在生产环境中应该更加限制
+CORS(app, 
+     supports_credentials=True, 
+     origins=["https://mooc2-ans.chaoxing.com", "http://localhost:8080", "http://127.0.0.1:8080"],  # 指定允许的来源
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],  # 指定允许的头信息
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     expose_headers=["Content-Length", "X-Total-Count"],
+     max_age=600  # 预检请求缓存时间，减少OPTIONS请求
+)
 
 # 设置应用密钥，用于会话加密
 app.secret_key = Config.SECRET_KEY if hasattr(Config, 'SECRET_KEY') else os.urandom(24)
 
 # 禁用Flask内置日志，仅保留错误级别
 app.logger.setLevel(logging.ERROR)
+app.logger.propagate = False
+app.logger.handlers = []
+app.logger.addHandler(file_handler)
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
-# 初始化数据库会话
-db = get_db_session()
+# 全局变量
+from flask import g
+
+# 请求级别的数据库会话管理
+@app.before_request
+def setup_request():
+    """在每个请求前创建一个新的数据库会话"""
+    try:
+        session = get_db_session()
+        if session is None:
+            logger.error("无法创建数据库会话，请检查数据库连接")
+            # 在这里不抛出异常，而是允许请求继续处理
+            # 其他需要数据库的代码应该检查g.db是否存在
+        g.db = session
+        logger.debug("成功创建请求级别的数据库会话")
+    except Exception as e:
+        logger.error(f"初始化请求级别的数据库会话时出错: {str(e)}")
+        # 设置g.db为None，表示没有可用的数据库会话
+        g.db = None
+
+@app.teardown_request
+def teardown_request(exception=None):
+    """在每个请求结束后关闭数据库会话"""
+    db = getattr(g, 'db', None)
+    if db is not None:
+        try:
+            if exception:
+                # 如果请求过程中发生异常，回滚事务
+                try:
+                    db.rollback()
+                    logger.warning(f"请求处理异常，回滚数据库事务: {str(exception)}")
+                except Exception as rollback_error:
+                    logger.error(f"回滚数据库事务时出错: {str(rollback_error)}")
+            # 关闭会话
+            close_db_session(db)
+            logger.debug("成功关闭请求级别的数据库会话")
+        except Exception as e:
+            logger.error(f"关闭数据库会话时出错: {str(e)}")
+
+# 全局异常处理
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """全局异常处理器"""
+    # 记录异常
+    logger.error(f"全局异常: {str(e)}", exc_info=True)
+    
+    # 如果是SQLAlchemy相关异常，确保数据库会话被回滚
+    db = getattr(g, 'db', None)
+    if db is not None:
+        try:
+            db.rollback()
+        except Exception as db_error:
+            logger.error(f"异常处理中回滚数据库事务时出错: {str(db_error)}")
+    
+    # 返回错误响应
+    return jsonify({
+        'code': 0,
+        'msg': f'服务器内部错误: {str(e)}'
+    }), 500
+
+# 404错误处理器
+@app.errorhandler(404)
+def page_not_found(e):
+    """处理404错误"""
+    # 记录请求的URL和方法
+    logger.warning(f"404错误: {request.method} {request.path} | 参数: {dict(request.args)} | 来源: {request.remote_addr}")
+    
+    # 检查是否是API请求
+    if request.path.startswith('/api/'):
+        return jsonify({
+            'code': 0,
+            'msg': '请求的API端点不存在'
+        }), 404
+    
+    # 网页请求返回友好的404页面
+    current_year = datetime.now().year
+    return render_template('404.html', current_year=current_year), 404
 
 # 全局变量，存储Redis缓存实例
 cache = None
@@ -103,8 +220,6 @@ if not Config.OPENAI_API_KEY:
 api_base = Config.OPENAI_API_BASE
 if not api_base.endswith('/'):
     api_base += '/'
-if '//' in api_base[8:]:  # 避免URL中有重复的斜杠
-    api_base = api_base.replace('/v1/', '/v1')
 
 # 初始化OpenAI客户端
 try:
@@ -215,6 +330,15 @@ def search():
                 logger.info(f"从缓存获取答案 (耗时: {time.time() - start_time:.2f}秒)")
                 return jsonify(format_answer_for_ocs(question, cached_answer))
         
+        # 获取模型参数，优先用前端传入的 model，否则用默认
+        model = request.json.get('model') if request.is_json else request.args.get('model')
+        models = Config.OPENAI_MODELS.copy()
+        if not model:
+            model = Config.OPENAI_MODEL
+        if model not in models:
+            models.insert(0, model)
+        model_index = 0
+        
         # 构建发送给OpenAI的提示
         prompt = parse_question_and_options(question, options, question_type)
         
@@ -239,7 +363,7 @@ def search():
                         {"role": "user", "content": prompt}
                     ],
                     "stream": False,
-                    "model": Config.OPENAI_MODEL,
+                    "model": model,
                     "temperature": Config.TEMPERATURE,
                     "presence_penalty": 0,
                     "frequency_penalty": 0,
@@ -249,7 +373,7 @@ def search():
                 
                 # 发送API请求
                 resp = httpx.post(
-                    f"{Config.OPENAI_API_BASE.rstrip('/')}/chat/completions",
+                    f"{Config.OPENAI_API_BASE.rstrip('/')}/v1/chat/completions",
                     headers=headers,
                     json=data,
                     timeout=60.0,
@@ -258,46 +382,62 @@ def search():
                 
                 # 处理响应
                 if resp.status_code == 200:
-                    # 处理成功响应
-                    # 用UTF-8解码，兼容流式响应
-                    for line in resp.text.strip().split('\n'):
-                        if line.startswith("data: ") and line != "data: [DONE]":
-                            try:
-                                json_str = line[len("data: "):]
-                                data = json.loads(json_str)
-                                content = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                                if content:
-                                    ai_answer += content
-                            except Exception as e:
-                                logger.warning(f"解析流式响应行失败: {str(e)}")
+                    # 先尝试直接解析完整的JSON响应
+                    try:
+                        full_response = resp.json()
+                        content = full_response.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        if content:
+                            ai_answer = content
+                            logger.info(f"从完整JSON解析到答案: {ai_answer}")
+                    except Exception as e:
+                        logger.warning(f"解析完整JSON失败: {str(e)}")
+                        
+                        # 回退到流式响应解析方式
+                        for line in resp.text.strip().split('\n'):
+                            if line.startswith("data: ") and line != "data: [DONE]":
+                                try:
+                                    json_str = line[len("data: "):]
+                                    data = json.loads(json_str)
+                                    content = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                                    if content:
+                                        ai_answer += content
+                                except Exception as e:
+                                    logger.warning(f"解析流式响应行失败: {str(e)}")
                     
                     # 成功获取答案，跳出重试循环
                     # 报告密钥使用成功
                     key_switcher.report_key_success()
                     logger.info(f"API请求成功，报告密钥使用成功")
                     break
+                elif resp.status_code == 503:
+                    # 切换到下一个模型
+                    model_index = (model_index + 1) % len(models)
+                    model = models[model_index]
+                    logger.warning(f"503错误，切换到下一个模型: {model}")
+                    retry_count += 1
+                    continue
                 else:
-                    # 处理错误响应
                     error_msg = f"代理API请求失败: {resp.status_code} - {resp.text}"
                     logger.error(error_msg)
-                    
-                    # 检查是否需要切换密钥
+                    # 403 只重试，不切换密钥
+                    if resp.status_code == 403:
+                        retry_count += 1
+                        logger.info(f"403错误，直接重试 ({retry_count}/{max_retries})...")
+                        continue
+                    # 其它情况按 should_switch_key 逻辑
                     if key_switcher.should_switch_key(resp.status_code, resp.text):
                         logger.info("检测到API错误，尝试切换密钥...")
                         success = key_switcher.switch_key_if_needed(resp.status_code, resp.text)
-                        
                         if success:
-                            # 重新加载配置，获取新的API密钥
                             from config import Config as ReloadedConfig
                             Config.OPENAI_API_KEY = ReloadedConfig.OPENAI_API_KEY
                             logger.info(f"密钥已切换为: {Config.OPENAI_API_KEY[:10]}...")
-                            
-                            # 增加重试计数
                             retry_count += 1
                             logger.info(f"正在重试请求 ({retry_count}/{max_retries})...")
+                            if retry_count >= 2:
+                                cache_cleared = key_switcher.clear_token_cache()
+                                logger.info(f"多次重试失败，已清除Token缓存 ({cache_cleared}条记录)")
                             continue
-                    
-                    # 如果不需要切换密钥或切换失败，返回错误
                     return jsonify({
                         'code': 0,
                         'msg': error_msg
@@ -406,6 +546,12 @@ def search():
 @rate_limit(limit=30, period=60)
 def health_check():
     """健康检查接口"""
+    # 随机清除Token缓存 (5%概率)
+    if random.random() < 0.05:
+        cache_cleared = key_switcher.clear_token_cache()
+        if cache_cleared > 0:
+            logger.info(f"健康检查时随机清除了Token缓存 ({cache_cleared}条记录)")
+            
     return jsonify({
         'status': 'ok',
         'message': 'AI题库服务运行正常',
@@ -417,7 +563,7 @@ def health_check():
 @app.route('/api/cache/clear', methods=['POST'])
 @rate_limit(limit=1, period=60)
 def clear_cache():
-    """清除缓存接口"""
+    """清理缓存"""
     # 验证访问令牌
     if not verify_access_token(request):
         return jsonify({
@@ -425,140 +571,100 @@ def clear_cache():
             'message': '无效的访问令牌'
         }), 403
     
-    if not Config.ENABLE_CACHE:
+    # 如果缓存未启用，返回错误
+    if not Config.ENABLE_CACHE or cache is None:
         return jsonify({
             'success': False,
-            'message': '缓存未启用'
+            'message': '缓存功能未启用'
         })
     
+    # 清除缓存
     cleared = cache.clear()
+    
     return jsonify({
         'success': True,
         'message': f'缓存已清除，共{cleared}条记录'
     })
 
-@app.route('/api/stats', methods=['GET'])
-@rate_limit(limit=30, period=60)
-def get_stats():
-    """获取服务统计信息"""
-    # 验证访问令牌
-    if not verify_access_token(request):
-        return jsonify({
-            'success': False,
-            'message': '无效的访问令牌'
-        }), 403
-    
-    # 查询记录总数
-    records_count = db.query(QARecord).count()
-    
-    stats = {
-        'version': '1.0.0',
-        'uptime': time.time() - start_time,
-        'model': Config.OPENAI_MODEL,
-        'cache_enabled': Config.ENABLE_CACHE,
-        'cache_size': cache.size if Config.ENABLE_CACHE else 0,
-        'qa_records_count': records_count
-    }
-    
-    return jsonify(stats)
-
 @app.route('/api/record/update', methods=['POST'])
 @rate_limit(limit=5, period=60)
 def update_record():
     """更新问答记录"""
-    # 验证访问令牌
-    if not verify_access_token(request):
-        return jsonify({
-            'success': False,
-            'message': '无效的访问令牌'
-        }), 403
-    
     try:
         data = request.get_json()
         record_id = int(data.get('record_id', -1))
-        
         # 查询记录
         record = db.query(QARecord).filter(QARecord.id == record_id).first()
-        
         if not record:
             return jsonify({
                 'success': False,
                 'message': '记录不存在'
             })
-        
+        # 检查是否有可更新字段（None或空字符串都视为未更新）
+        updatable = False
+        for field in ['question', 'type', 'options', 'answer']:
+            if field in data and data[field] is not None and str(data[field]).strip() != '':
+                updatable = True
+                break
+        if not updatable:
+            # 记录无效更新请求
+            app.logger.info(f"无效题目更新请求：仅传record_id={record_id}，无其它字段")
+            return jsonify({
+                'success': False,
+                'message': '未提供任何可更新字段，未做任何更改'
+            })
         # 更新记录
-        record.question = data.get('question', record.question)
-        record.type = data.get('type', record.type)
-        record.options = data.get('options', record.options)
-        record.answer = data.get('answer', record.answer)
-        
-        # 提交更新
+        if 'question' in data and data['question'] is not None and str(data['question']).strip() != '':
+            record.question = data['question']
+        if 'type' in data and data['type'] is not None and str(data['type']).strip() != '':
+            record.type = data['type']
+        if 'options' in data and data['options'] is not None and str(data['options']).strip() != '':
+            record.options = data['options']
+        if 'answer' in data and data['answer'] is not None and str(data['answer']).strip() != '':
+            record.answer = data['answer']
         db.commit()
-        
         # 如果启用了缓存，更新缓存
         if Config.ENABLE_CACHE:
-            # 先删除旧缓存
-            cache.delete(record.question, record.type, record.options)
-            # 添加新缓存
-            cache.set(record.question, record.answer, record.type, record.options)
-        
-        logger.info(f"更新记录 {record.id}: '{record.question[:30]}...'")
-        
+            cache.delete(f'qa_{record_id}')
         return jsonify({
             'success': True,
             'message': '记录已更新'
         })
-    
     except Exception as e:
-        logger.error(f"更新记录时发生错误: {str(e)}", exc_info=True)
+        app.logger.error(f"更新记录异常: {e}")
         return jsonify({
             'success': False,
-            'message': f'发生错误: {str(e)}'
+            'message': f'更新失败: {e}'
         })
 
 @app.route('/api/record/delete', methods=['POST'])
 @rate_limit(limit=5, period=60)
 def delete_record():
     """删除问答记录"""
-    # 验证访问令牌
-    if not verify_access_token(request):
-        return jsonify({
-            'success': False,
-            'message': '无效的访问令牌'
-        }), 403
-    
+    # 移除访问令牌校验
     try:
         data = request.get_json()
         record_id = int(data.get('record_id', -1))
-        
         # 查询记录
         record = db.query(QARecord).filter(QARecord.id == record_id).first()
-        
         if not record:
             return jsonify({
                 'success': False,
                 'message': '记录不存在'
             })
-        
         # 如果启用了缓存，删除缓存
         if Config.ENABLE_CACHE and cache is not None:
             try:
                 cache.delete(record.question, record.type, record.options)
             except Exception as e:
                 logger.warning(f"删除缓存时发生错误: {str(e)}")
-        
-        # 记录日志
         logger.info(f"删除记录 {record.id}: '{record.question[:30]}...'")
-        
-        # 删除记录
         db.delete(record)
         db.commit()
-        
         return jsonify({
             'success': True,
             'message': '记录已删除'
         })
-    
     except Exception as e:
         logger.error(f"删除记录时发生错误: {str(e)}", exc_info=True)
         return jsonify({
@@ -586,11 +692,11 @@ def login_required(view_func):
                         session['username'] = user.username
                         session['is_admin'] = user.is_admin
                     else:
-                        return redirect(url_for('login'))
+                        return redirect(url_for('auth.login'))
                 else:
-                    return redirect(url_for('login'))
+                    return redirect(url_for('auth.login'))
             else:
-                return redirect(url_for('login'))
+                return redirect(url_for('auth.login'))
         return view_func(*args, **kwargs)
     return wrapped_view
 
@@ -600,7 +706,7 @@ def admin_required(view_func):
     def wrapped_view(*args, **kwargs):
         # 先验证登录
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         
         # 验证管理员权限
         if not session.get('is_admin', False):
@@ -608,136 +714,6 @@ def admin_required(view_func):
         
         return view_func(*args, **kwargs)
     return wrapped_view
-
-# 注册页面
-@app.route('/register', methods=['GET', 'POST'])
-@rate_limit(limit=5, period=60)
-def register():
-    """用户注册页面"""
-    current_year = datetime.now().year
-    # 如果用户已经登录，则重定向到首页
-    if 'user_id' in session:
-        return redirect(url_for('index'))
-    
-    error = None
-    if request.method == 'POST':
-        # 获取表单数据
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-        confirm_password = request.form.get('confirm_password', '')
-        email = request.form.get('email', '').strip() or None
-        
-        # 基本验证
-        if not username or not password:
-            error = "用户名和密码不能为空"
-        elif len(username) < 3:
-            error = "用户名长度不能少于3个字符"
-        elif len(password) < 6:
-            error = "密码长度不能少于6个字符"
-        elif password != confirm_password:
-            error = "两次输入的密码不一致"
-        else:
-            # 创建用户
-            user, err = create_user(db, username, password, email)
-            if user:
-                # 设置登录状态
-                session['user_id'] = user.id
-                session['username'] = user.username
-                session['is_admin'] = user.is_admin
-                
-                # 创建持久会话
-                session_id = UserSession.create_session(
-                    db, 
-                    user.id, 
-                    ip_address=request.remote_addr,
-                    user_agent=request.user_agent.string
-                )
-                
-                # 更新用户最后登录时间
-                user.last_login = datetime.now()
-                db.commit()
-                
-                # 设置cookie
-                response = make_response(redirect(url_for('index')))
-                response.set_cookie('session_id', session_id, max_age=30*24*60*60, httponly=True)
-                
-                return response
-            else:
-                error = err
-    
-    return render_template('register.html', error=error, current_year=current_year)
-
-# 登录页面
-@app.route('/login', methods=['GET', 'POST'])
-@rate_limit(limit=5, period=60)
-def login():
-    """用户登录页面"""
-    current_year = datetime.now().year
-    # 如果用户已经登录，则重定向到首页
-    if 'user_id' in session:
-        return redirect(url_for('index'))
-    
-    error = None
-    if request.method == 'POST':
-        # 获取表单数据
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-        remember = request.form.get('remember', '') == 'on'
-        
-        # 认证用户
-        user = authenticate_user(db, username, password)
-        if user:
-            # 设置登录状态
-            session['user_id'] = user.id
-            session['username'] = user.username
-            session['is_admin'] = user.is_admin
-            
-            # 如果选择了"记住我"，则创建持久会话
-            if remember:
-                session_id = UserSession.create_session(
-                    db, 
-                    user.id, 
-                    ip_address=request.remote_addr,
-                    user_agent=request.user_agent.string
-                )
-                
-                # 更新用户最后登录时间
-                user.last_login = datetime.now()
-                db.commit()
-                
-                # 设置cookie
-                response = make_response(redirect(url_for('index')))
-                response.set_cookie('session_id', session_id, max_age=30*24*60*60, httponly=True)
-                
-                return response
-            
-            # 更新用户最后登录时间
-            user.last_login = datetime.now()
-            db.commit()
-            
-            return redirect(url_for('index'))
-        else:
-            error = "用户名或密码错误"
-    
-    return render_template('login.html', error=error, current_year=current_year)
-
-# 退出登录
-@app.route('/logout')
-def logout():
-    """退出登录"""
-    # 删除会话
-    session_id = request.cookies.get('session_id')
-    if session_id:
-        UserSession.delete_session(db, session_id)
-    
-    # 清除会话数据
-    session.clear()
-    
-    # 清除cookie
-    response = make_response(redirect(url_for('login')))
-    response.delete_cookie('session_id')
-    
-    return response
 
 # 首页
 @app.route('/', methods=['GET'])
@@ -760,7 +736,7 @@ def dashboard():
     uptime_str = f"{days}天{hours}小时{minutes}分钟"
     
     # 从数据库获取记录
-    records = db.query(QARecord).order_by(QARecord.created_at.desc()).limit(100).all()
+    records = g.db.query(QARecord).order_by(QARecord.created_at.desc()).limit(100).all()
     records_data = [record.to_dict() for record in records]
     
     # 安全获取缓存大小
@@ -777,189 +753,6 @@ def dashboard():
         current_year=current_year
     )
 
-@app.route('/logs', methods=['GET'])
-@login_required
-@admin_required
-def logs_panel():
-    """日志面板 - 显示系统日志"""
-    current_year = datetime.now().year
-    # 获取最近的日志
-    log_content = Logger.get_latest_logs(max_lines=1000)
-    
-    # 获取系统状态信息
-    uptime_seconds = time.time() - start_time
-    days = int(uptime_seconds // 86400)
-    hours = int((uptime_seconds % 86400) // 3600)
-    minutes = int((uptime_seconds % 3600) // 60)
-    uptime_str = f"{days}天{hours}小时{minutes}分钟"
-    
-    return render_template(
-        'logs.html',
-        version="1.1.0",
-        log_content=log_content,
-        model=Config.OPENAI_MODEL,
-        uptime=uptime_str,
-        current_year=current_year
-    )
-
-@app.route('/settings', methods=['GET', 'POST'])
-@login_required
-@admin_required
-def settings():
-    """配置页面 - 允许用户修改系统配置"""
-    current_year = datetime.now().year
-    # 获取当前配置
-    current_config = {
-        # 数据库配置
-        'DB_TYPE': Config.DB_TYPE,
-        'DB_HOST': Config.DB_HOST,
-        'DB_PORT': Config.DB_PORT,
-        'DB_USER': Config.DB_USER,
-        'DB_PASSWORD': Config.DB_PASSWORD,
-        'DB_NAME': Config.DB_NAME,
-        
-        # Redis配置
-        'REDIS_ENABLED': Config.REDIS_ENABLED,
-        'REDIS_HOST': Config.REDIS_HOST,
-        'REDIS_PORT': Config.REDIS_PORT,
-        'REDIS_PASSWORD': Config.REDIS_PASSWORD,
-        'REDIS_DB': Config.REDIS_DB,
-        
-        # 缓存配置
-        'ENABLE_CACHE': Config.ENABLE_CACHE,
-        'CACHE_EXPIRATION': Config.CACHE_EXPIRATION,
-        
-        # OpenAI配置
-        'OPENAI_API_KEY': Config.OPENAI_API_KEY,
-        'OPENAI_MODEL': Config.OPENAI_MODEL,
-        'OPENAI_API_BASE': Config.OPENAI_API_BASE,
-        'OPENAI_TEMPERATURE': Config.OPENAI_TEMPERATURE,
-        'OPENAI_MAX_TOKENS': Config.OPENAI_MAX_TOKENS,
-        
-        # 其他配置
-        'ENABLE_RECORD': Config.ENABLE_RECORD,
-        'ACCESS_TOKEN': Config.ACCESS_TOKEN,
-        'MAX_TOKENS': Config.MAX_TOKENS,
-        'TEMPERATURE': Config.TEMPERATURE,
-        'SSL_CERT_FILE': Config.SSL_CERT_FILE,
-    }
-    
-    if request.method == 'POST':
-        # 处理表单提交
-        try:
-            new_config = {
-                # 缓存设置
-                'ENABLE_CACHE': request.form.get('ENABLE_CACHE') == 'on',
-                'CACHE_EXPIRATION': int(request.form.get('CACHE_EXPIRATION', Config.CACHE_EXPIRATION)),
-                
-                # OpenAI设置
-                'OPENAI_API_KEY': request.form.get('OPENAI_API_KEY', Config.OPENAI_API_KEY),
-                'OPENAI_MODEL': request.form.get('OPENAI_MODEL', Config.OPENAI_MODEL),
-                'OPENAI_API_BASE': request.form.get('OPENAI_API_BASE', Config.OPENAI_API_BASE),
-                'OPENAI_TEMPERATURE': float(request.form.get('OPENAI_TEMPERATURE', Config.OPENAI_TEMPERATURE)),
-                'OPENAI_MAX_TOKENS': int(request.form.get('OPENAI_MAX_TOKENS', Config.OPENAI_MAX_TOKENS)),
-                
-                # 其他设置
-                'ENABLE_RECORD': request.form.get('ENABLE_RECORD') == 'on',
-                'ACCESS_TOKEN': request.form.get('ACCESS_TOKEN', Config.ACCESS_TOKEN),
-                'MAX_TOKENS': Config.MAX_TOKENS,
-                'TEMPERATURE': Config.TEMPERATURE,
-                'SSL_CERT_FILE': Config.SSL_CERT_FILE
-            }
-            
-            # 更新配置文件
-            update_config(new_config)
-            
-            # 返回成功信息
-            return render_template(
-                'settings.html',
-                success="配置已成功更新！",
-                config=current_config,  # 重新加载当前配置
-                current_year=current_year
-            )
-        except Exception as e:
-            # 返回错误信息
-            return render_template(
-                'settings.html',
-                error=f"更新配置失败: {str(e)}",
-                config=current_config,
-                current_year=current_year
-            )
-    
-    # GET请求直接显示配置页面
-    return render_template(
-        'settings.html',
-        config=current_config,
-        current_year=current_year
-    )
-
-# 更新配置文件函数
-def update_config(new_config):
-    """更新系统配置"""
-    # 更新运行时配置
-    Config.ENABLE_CACHE = new_config.get('ENABLE_CACHE', Config.ENABLE_CACHE)
-    Config.CACHE_EXPIRATION = new_config.get('CACHE_EXPIRATION', Config.CACHE_EXPIRATION)
-    
-    Config.ENABLE_RECORD = new_config.get('ENABLE_RECORD', Config.ENABLE_RECORD)
-    
-    Config.OPENAI_API_KEY = new_config.get('OPENAI_API_KEY', Config.OPENAI_API_KEY)
-    Config.OPENAI_MODEL = new_config.get('OPENAI_MODEL', Config.OPENAI_MODEL)
-    Config.OPENAI_API_BASE = new_config.get('OPENAI_API_BASE', Config.OPENAI_API_BASE)
-    Config.OPENAI_TEMPERATURE = new_config.get('OPENAI_TEMPERATURE', Config.OPENAI_TEMPERATURE)
-    Config.OPENAI_MAX_TOKENS = new_config.get('OPENAI_MAX_TOKENS', Config.OPENAI_MAX_TOKENS)
-    
-    Config.ACCESS_TOKEN = new_config.get('ACCESS_TOKEN', Config.ACCESS_TOKEN)
-    
-    # 更新配置文件
-    config_data = {
-        'service': {
-            'host': Config.HOST,
-            'port': Config.PORT,
-            'debug': Config.DEBUG
-        },
-        'openai': {
-            'api_key': Config.OPENAI_API_KEY,
-            'model': Config.OPENAI_MODEL,
-            'api_base': Config.OPENAI_API_BASE
-        },
-        'cache': {
-            'enable': Config.ENABLE_CACHE,
-            'expiration': Config.CACHE_EXPIRATION
-        },
-        'security': {
-            'access_token': Config.ACCESS_TOKEN,
-            'secret_key': Config.SECRET_KEY if hasattr(Config, 'SECRET_KEY') else os.urandom(24).hex()
-        },
-        'database': {
-            'type': Config.DB_TYPE,
-            'host': Config.DB_HOST,
-            'port': Config.DB_PORT,
-            'user': Config.DB_USER,
-            'password': Config.DB_PASSWORD,
-            'name': Config.DB_NAME
-        },
-        'redis': {
-            'enabled': Config.REDIS_ENABLED,
-            'host': Config.REDIS_HOST,
-            'port': Config.REDIS_PORT,
-            'password': Config.REDIS_PASSWORD,
-            'db': Config.REDIS_DB
-        },
-        'record': {
-            'enable': Config.ENABLE_RECORD
-        }
-    }
-    
-    # 保存到配置文件
-    try:
-        with open('config.json', 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
-        logger.info("配置已保存到config.json文件")
-        return True
-    except Exception as e:
-        logger.error(f"保存配置到config.json文件时发生错误: {str(e)}")
-        raise e
-
 @app.route('/docs', methods=['GET'])
 # @login_required  # 如果需要限制访问，取消此行注释
 def docs():
@@ -967,676 +760,128 @@ def docs():
     current_year = datetime.now().year
     return render_template('api_docs.html', current_year=current_year)
 
-@app.route('/tokens', methods=['GET'])
-@login_required
-@admin_required
-def tokens_monitor():
-    """Token监控页面 - 显示API令牌管理界面"""
+@app.route('/session/set', methods=['POST'])
+def set_session_ajax():
+    session_value = request.json.get('session_value', '').strip()
+    if session_value:
+        session['veloera_session'] = session_value
+        
+        # 更新 config.json 中的 session
+        try:
+            # 读取当前配置
+            with open('config.json', 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            
+            # 更新 session
+            if 'openai' not in config_data:
+                config_data['openai'] = {}
+            config_data['openai']['session'] = session_value
+            
+            # 写回配置文件
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            
+            # 立即同步 tokens 到 config.json
+            from token_sync import sync_tokens_to_config
+            sync_tokens_to_config()
+            
+            logger.info("Session 已保存并同步到 config.json")
+            return jsonify({"success": True, "message": "Session 已保存并同步到配置文件"})
+        except Exception as e:
+            logger.error(f"保存 Session 到配置文件失败: {str(e)}")
+            return jsonify({"success": False, "message": f"Session 已保存但同步失败: {str(e)}"})
+    return jsonify({"success": False, "message": "请输入有效的 session 值"})
+
+@app.route('/ai-search', methods=['GET'])
+def ai_search_page():
+    return render_template('ai_search.html')
+
+@app.route('/logs', methods=['GET'])
+def logs():
+    # 读取日志内容（只取最后2000行，防止太大）
+    log_file = os.path.join('logs', 'app.log')
+    log_content = ""
+    if os.path.exists(log_file):
+        with open(log_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            log_content = ''.join(lines[-2000:])
     current_year = datetime.now().year
-    
-    # 获取系统状态信息
-    uptime_seconds = time.time() - start_time
-    days = int(uptime_seconds // 86400)
-    hours = int((uptime_seconds % 86400) // 3600)
-    minutes = int((uptime_seconds % 3600) // 60)
-    uptime_str = f"{days}天{hours}小时{minutes}分钟"
-    
-    # 获取所有可用模型列表
-    available_models = ["gpt-3.5-turbo", "gpt-4", "gpt-4o"]
-    
-    return render_template(
-        'tokens.html',
-        version="1.1.0",
-        model=Config.OPENAI_MODEL,
-        uptime=uptime_str,
-        current_year=current_year,
-        available_models=available_models
-    )
+    return render_template('logs.html', log_content=log_content, version="1.1.0", current_year=current_year)
 
-@app.route('/api/tokens', methods=['GET'])
-@login_required
-def get_tokens():
-    """获取当前用户的所有令牌"""
-    # 直接重定向到/api/token/接口
-    return redirect('/api/token/?p=0&size=10')
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    # 禁止注册，显示提示信息
+    return render_template('error.html', error='当前系统已关闭注册，如需账号请联系管理员。')
 
-# 保留这个路由，它返回示例数据
-@app.route('/api/token/', methods=['GET'])
-@login_required
-def get_token():
-    """获取当前用户的所有令牌 - 兼容路径"""
-    # 直接返回示例数据
-    return jsonify({
-        "success": True,
-        "message": "",
-        "data": [
-            {
-                "id": 344,
-                "user_id": 84,
-                "key": "TvSL6MICe45rY67o3GxtFgquKwx948T2cv7uEkSxEcMBDTw8",
-                "status": 1,
-                "name": "-WRvw41",
-                "created_time": 1748229740,
-                "accessed_time": 1748273952,
-                "expired_time": 1750821712,
-                "remain_quota": 492934,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 7066,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 343,
-                "user_id": 84,
-                "key": "vebjOH251UyGigHqIC07hyhORqms4PnlkpnArHKWEW4YQZJB",
-                "status": 1,
-                "name": "-GtRKWD",
-                "created_time": 1748229739,
-                "accessed_time": 1748229739,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 342,
-                "user_id": 84,
-                "key": "TJBeBMmOe8p3tcvm5akEozoaJdgzmplQAtyCQjvlRRE93Gca",
-                "status": 1,
-                "name": "-2YJJsw",
-                "created_time": 1748229739,
-                "accessed_time": 1748229739,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 341,
-                "user_id": 84,
-                "key": "nZUFTI3uMQgSrZ4VKqOt1QcpAFc1fJsR6ATYmON8qQCk23fZ",
-                "status": 1,
-                "name": "-NNaWBY",
-                "created_time": 1748229738,
-                "accessed_time": 1748229738,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 340,
-                "user_id": 84,
-                "key": "vRr1c4YTJFhiGWNWvGqgmKQav82ygWcynAc9Pb0vbQ5d2PLS",
-                "status": 1,
-                "name": "-VZzLqU",
-                "created_time": 1748229738,
-                "accessed_time": 1748229738,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 339,
-                "user_id": 84,
-                "key": "UxTjZmZR8jrpMc0E86A6toqg6wfgiUmBzdC2WVvukIW8YGgA",
-                "status": 1,
-                "name": "-26JnxD",
-                "created_time": 1748229737,
-                "accessed_time": 1748229737,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 338,
-                "user_id": 84,
-                "key": "7VhCSKbUxiPqV7YjH856BxKY1AjgVLwWvKEqHpAQxEuHmbE8",
-                "status": 1,
-                "name": "-YT2X0a",
-                "created_time": 1748229737,
-                "accessed_time": 1748229737,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 337,
-                "user_id": 84,
-                "key": "hmXBNT7JDJPECuYcZgMdQCQOBspBuMBCB00uk8et1xoqisT9",
-                "status": 1,
-                "name": "-ucwF9s",
-                "created_time": 1748229736,
-                "accessed_time": 1748229736,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 336,
-                "user_id": 84,
-                "key": "XZrQEV1XwJPLZkI8JGBW3tduXGarspp8l0oodyXQBsn531Ph",
-                "status": 1,
-                "name": "-xa5R07",
-                "created_time": 1748229736,
-                "accessed_time": 1748229736,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            },
-            {
-                "id": 335,
-                "user_id": 84,
-                "key": "upgvAg7xFIiHR8HvdqQH4T1aj6ZPx1o0WZUeL3Bg17EqgzId",
-                "status": 1,
-                "name": "",
-                "created_time": 1748229735,
-                "accessed_time": 1748229735,
-                "expired_time": 1750821712,
-                "remain_quota": 500000,
-                "unlimited_quota": False,
-                "model_limits_enabled": True,
-                "model_limits": "gpt-4o",
-                "allow_ips": "",
-                "used_quota": 0,
-                "group": "",
-                "DeletedAt": None
-            }
-        ]
-    })
-
-# 以下API路由用于模拟成功响应
-@app.route('/api/tokens', methods=['POST'])
-@login_required
-def create_token():
-    """创建新令牌"""
-    return jsonify({
-        "success": True,
-        "message": "令牌创建成功",
-        "data": {
-            "id": 345,
-            "user_id": 84,
-            "key": "NEW_TOKEN_KEY_" + uuid.uuid4().hex[:10],
-            "status": 1,
-            "name": request.json.get('name', '新令牌'),
-            "created_time": int(time.time()),
-            "accessed_time": int(time.time()),
-            "expired_time": int(time.time()) + 30*24*60*60,
-            "remain_quota": request.json.get('quota', 500000),
-            "unlimited_quota": request.json.get('unlimited', False),
-            "model_limits_enabled": request.json.get('model_limits_enabled', False),
-            "model_limits": request.json.get('model_limits', 'gpt-4o'),
-            "allow_ips": request.json.get('allow_ips', ''),
-            "used_quota": 0,
-            "group": "",
-            "DeletedAt": None
-        }
-    })
-
-@app.route('/api/tokens/<int:token_id>', methods=['PUT'])
-@login_required
-def update_token(token_id):
-    """更新令牌信息"""
-    return jsonify({
-        "success": True,
-        "message": "令牌更新成功",
-        "data": {
-            "id": token_id,
-            "user_id": 84,
-            "key": "TOKEN_KEY_" + uuid.uuid4().hex[:10],
-            "status": request.json.get('status', 1),
-            "name": request.json.get('name', '更新的令牌'),
-            "created_time": int(time.time()) - 3600,
-            "accessed_time": int(time.time()),
-            "expired_time": int(time.time()) + 30*24*60*60,
-            "remain_quota": request.json.get('quota', 500000),
-            "unlimited_quota": request.json.get('unlimited_quota', False),
-            "model_limits_enabled": request.json.get('model_limits_enabled', False),
-            "model_limits": request.json.get('model_limits', 'gpt-4o'),
-            "allow_ips": request.json.get('allow_ips', ''),
-            "used_quota": 0,
-            "group": "",
-            "DeletedAt": None
-        }
-    })
-
-@app.route('/api/tokens/<int:token_id>', methods=['DELETE'])
-@login_required
-def delete_token(token_id):
-    """删除令牌"""
-    return jsonify({
-        "success": True,
-        "message": "令牌已删除"
-    })
-
-@app.route('/questions', methods=['GET'])
-@login_required
-def questions():
-    """题库管理页面"""
-    current_year = datetime.now().year
-    # 获取查询参数
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    search_query = request.args.get('q', '')
-    current_type = request.args.get('type', '')
-    
-    # 查询条件构建
-    query = db.query(QARecord)
-    
-    # 按类型筛选
-    if current_type:
-        query = query.filter(QARecord.type == current_type)
-    
-    # 搜索条件
-    if search_query:
-        search_term = f"%{search_query}%"
-        query = query.filter(
-            (QARecord.question.like(search_term)) | 
-            (QARecord.answer.like(search_term))
-        )
-    
-    # 计算总记录数和总页数
-    total_records = query.count()
-    total_pages = (total_records + per_page - 1) // per_page
-    
-    # 分页
-    offset = (page - 1) * per_page
-    records = query.order_by(QARecord.id.desc()).offset(offset).limit(per_page).all()
-    
-    # 获取各类型的数量统计
-    type_counts = {
-        'all': db.query(QARecord).count(),
-        'single': db.query(QARecord).filter(QARecord.type == 'single').count(),
-        'multiple': db.query(QARecord).filter(QARecord.type == 'multiple').count(),
-        'judgement': db.query(QARecord).filter(QARecord.type == 'judgement').count(),
-        'completion': db.query(QARecord).filter(QARecord.type == 'completion').count(),
-    }
-    
-    return render_template(
-        'questions.html',
-        records=records,
-        total_pages=total_pages,
-        page=page,
-        per_page=per_page,
-        search_query=search_query,
-        current_type=current_type,
-        type_counts=type_counts,
-        current_year=current_year
-    )
-
-@app.route('/api/questions/export', methods=['GET'])
-@rate_limit(limit=5, period=60)
-def export_questions():
-    """导出题库数据为CSV文件"""
-    # 验证访问令牌
-    if not verify_access_token(request):
-        return jsonify({
-            'success': False,
-            'message': '无效的访问令牌'
-        }), 403
-    
+@app.route('/api/key_pool', methods=['GET'])
+def key_pool():
+    """
+    获取密钥池信息的API端点
+    返回：
+        - count: 密钥总数
+        - current: 当前主密钥（部分掩码）
+        - keys: 所有密钥列表（部分掩码）
+        - updated_at: 最后更新时间
+    """
     try:
-        # 获取查询参数
-        question_type = request.args.get('type', '')
-        search_query = request.args.get('q', '')
-        # 构建查询
-        query = db.query(QARecord)
-        # 如果有搜索关键词
-        if search_query:
-            query = query.filter(QARecord.question.like(f'%{search_query}%') | 
-                                QARecord.answer.like(f'%{search_query}%'))
-        # 如果有类型筛选
-        if question_type:
-            query = query.filter(QARecord.type == question_type)
-        # 获取所有符合条件的记录
-        records = query.all()
-        # 生成CSV内容
-        import csv
-        import io
-        output = io.StringIO()
-        writer = csv.writer(output)
-        # 写入CSV标题行
-        writer.writerow(['ID', '问题', '类型', '选项', '答案', '创建时间'])
-        # 写入数据行
-        for record in records:
-            writer.writerow([
-                record.id,
-                record.question,
-                record.type or '未知',
-                record.options or '',
-                record.answer,
-                record.created_at.strftime('%Y-%m-%d %H:%M:%S')
-            ])
-        # 设置响应头
-        from flask import Response
-        response = Response(
-            output.getvalue(),
-            mimetype='text/csv',
-            headers={'Content-Disposition': 'attachment;filename=questions.csv'}
-        )
-        return response
-    except Exception as e:
-        logger.error(f"导出题库数据失败: {str(e)}", exc_info=True)
+        # 读取配置文件
+        with open('config.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            
+        # 获取密钥列表和当前主密钥
+        keys = config.get('openai', {}).get('api_keys', [])
+        current = config.get('openai', {}).get('api_key', '')
+        
+        # 对密钥进行掩码处理，保留前8位和后4位
+        keys_masked = [k[:8] + '****' + k[-4:] if len(k) > 12 else k for k in keys]
+        current_masked = current[:8] + '****' + current[-4:] if len(current) > 12 else current
+        
+        # 获取配置文件的最后修改时间
+        import os
+        from datetime import datetime
+        try:
+            mtime = os.path.getmtime('config.json')
+            updated_at = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+        except Exception as e:
+            logger.warning(f"获取配置文件修改时间失败: {str(e)}")
+            updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
         return jsonify({
-            'success': False,
-            'message': f'导出题库数据失败: {str(e)}'
-        }), 500
-
-@app.route('/api/questions/import', methods=['POST'])
-@rate_limit(limit=3, period=60)
-def import_questions():
-    """导入题库数据"""
-    # 验证访问令牌
-    if not verify_access_token(request):
-        return jsonify({
-            'success': False,
-            'message': '无效的访问令牌'
-        }), 403
-    
-    try:
-        # 检查是否有文件上传
-        if 'file' not in request.files:
-            return jsonify({
-                'success': False,
-                'message': '没有上传文件'
-            }), 400
-        
-        file = request.files['file']
-        
-        # 如果用户没有选择文件
-        if file.filename == '':
-            return jsonify({
-                'success': False,
-                'message': '没有选择文件'
-            }), 400
-        
-        # 检查文件扩展名
-        if not file.filename.endswith('.csv'):
-            return jsonify({
-                'success': False,
-                'message': '只支持导入CSV文件'
-            }), 400
-        
-        # 解析CSV文件
-        import csv
-        import io
-        stream = io.StringIO(file.stream.read().decode('utf-8'))
-        reader = csv.reader(stream)
-        
-        # 跳过标题行
-        next(reader)
-        
-        # 记录导入情况
-        imported_count = 0
-        error_count = 0
-        
-        # 处理每一行数据
-        for row in reader:
-            try:
-                # 确保行数据完整
-                if len(row) < 5:
-                    error_count += 1
-                    continue
-                
-                # 解析数据
-                question = row[1].strip()
-                question_type = row[2].strip() if row[2].strip() != '未知' else None
-                options = row[3].strip()
-                answer = row[4].strip()
-                
-                # 查重：如已存在则更新，否则插入
-                existing = db.query(QARecord).filter(
-                    QARecord.question == question,
-                    QARecord.type == question_type,
-                    QARecord.options == options
-                ).first()
-                if existing:
-                    existing.answer = answer
-                    existing.created_at = datetime.now()
-                else:
-                    qa_record = QARecord(
-                        question=question,
-                        type=question_type,
-                        options=options,
-                        answer=answer,
-                        created_at=datetime.now()
-                    )
-                    db.add(qa_record)
-                imported_count += 1
-                
-            except Exception as e:
-                logger.error(f"导入数据行错误: {str(e)}", exc_info=True)
-                error_count += 1
-        
-        # 提交所有更改
-        db.commit()
-        
-        # 更新缓存
-        if Config.ENABLE_CACHE and cache is not None:
-            try:
-                cache.clear()
-                logger.info("导入数据后清除缓存")
-            except Exception as e:
-                logger.warning(f"清除缓存时发生错误: {str(e)}")
-        
-        return jsonify({
-            'success': True,
-            'message': f'成功导入{imported_count}条记录，失败{error_count}条'
+            'count': len(keys),
+            'keys': keys_masked,
+            'current': current_masked,
+            'updated_at': updated_at,
+            'status': 'success'
         })
-    
+        
     except Exception as e:
-        logger.error(f"导入题库数据失败: {str(e)}", exc_info=True)
+        logger.error(f"获取密钥池信息失败: {str(e)}")
         return jsonify({
-            'success': False,
-            'message': f'导入题库数据失败: {str(e)}'
+            'count': 0,
+            'keys': [],
+            'current': '',
+            'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'status': 'error',
+            'message': f"获取密钥池信息失败: {str(e)}"
         }), 500
 
-@app.route('/api/questions/batch-delete', methods=['POST'])
-@rate_limit(limit=3, period=60)
-def batch_delete_questions():
-    """批量删除题库记录"""
-    # 验证访问令牌
-    if not verify_access_token(request):
-        return jsonify({
-            'success': False,
-            'message': '无效的访问令牌'
-        }), 403
-    
-    try:
-        data = request.get_json()
-        record_ids = data.get('record_ids', [])
-        
-        if not record_ids:
-            return jsonify({
-                'success': False,
-                'message': '未提供要删除的记录ID'
-            }), 400
-        
-        # 查询记录
-        records = db.query(QARecord).filter(QARecord.id.in_(record_ids)).all()
-        
-        if not records:
-            return jsonify({
-                'success': False,
-                'message': '未找到要删除的记录'
-            }), 404
-        
-        # 如果启用了缓存，删除缓存
-        if Config.ENABLE_CACHE and cache is not None:
-            try:
-                for record in records:
-                    cache.delete(record.question, record.type, record.options)
-            except Exception as e:
-                logger.warning(f"删除缓存时发生错误: {str(e)}")
-        
-        # 记录日志
-        logger.info(f"批量删除记录: {len(records)}条")
-        
-        # 删除记录
-        for record in records:
-            db.delete(record)
-        
-        db.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'成功删除{len(records)}条记录'
-        })
-    
-    except Exception as e:
-        logger.error(f"批量删除记录时发生错误: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': f'发生错误: {str(e)}'
-        }), 500
+# 注册Blueprint
+app.register_blueprint(auth_bp)
+app.register_blueprint(token_bp)
+app.register_blueprint(questions_bp)
+app.register_blueprint(settings_bp)
+app.register_blueprint(logs_bp)
 
-# 应用关闭时清理资源
-@app.teardown_appcontext
-def shutdown_session(exception=None):
-    if 'db' in globals():
-        db.close()
+# 将当前请求的数据库会话注入到模板中
+@app.context_processor
+def inject_db():
+    """将当前请求的数据库会话注入到模板中"""
+    return {'db': getattr(g, 'db', None)}
 
-@app.route('/search', methods=['GET'])
-def search_page():
-    """公开题目搜索页面 - 不需要登录即可访问"""
-    current_year = datetime.now().year
-    # 获取查询参数
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    search_query = request.args.get('q', '')
-    current_type = request.args.get('type', '')
-    
-    # 查询条件构建
-    query = db.query(QARecord)
-    
-    # 按类型筛选
-    if current_type:
-        query = query.filter(QARecord.type == current_type)
-    
-    # 搜索条件
-    if search_query:
-        search_term = f"%{search_query}%"
-        query = query.filter(
-            (QARecord.question.like(search_term)) | 
-            (QARecord.answer.like(search_term))
-        )
-    
-    # 计算总记录数和总页数
-    total_records = query.count()
-    total_pages = (total_records + per_page - 1) // per_page
-    
-    # 分页
-    offset = (page - 1) * per_page
-    records = query.order_by(QARecord.id.desc()).offset(offset).limit(per_page).all()
-    
-    # 转换记录为字典
-    records_data = [record.to_dict() for record in records]
-    
-    return render_template(
-        'search.html',
-        records=records_data,
-        total_pages=total_pages,
-        page=page,
-        per_page=per_page,
-        search_query=search_query,
-        current_type=current_type,
-        current_year=current_year
-    )
-
-@app.route('/api/record/add', methods=['POST'])
-@login_required
-@admin_required
-def add_record():
-    """手动录入题目到数据库和缓存"""
-    # 验证访问令牌
-    if not verify_access_token(request):
-        return jsonify({'success': False, 'message': '无效的访问令牌'}), 403
-    try:
-        data = request.get_json() if request.is_json else request.form
-        question = data.get('question', '').strip()
-        question_type = data.get('type', '').strip()
-        options = data.get('options', '').strip()
-        answer = data.get('answer', '').strip()
-        # 校验必填
-        if not (question and question_type and answer):
-            return jsonify({'success': False, 'message': '题目、类型、答案为必填项'}), 400
-        # 查重：如已存在则更新，否则插入
-        existing = db.query(QARecord).filter(
-            QARecord.question == question,
-            QARecord.type == question_type,
-            QARecord.options == options
-        ).first()
-        if existing:
-            existing.answer = answer
-            existing.created_at = datetime.now()
-            db.commit()
-            msg = '已存在，已覆盖答案'
-        else:
-            qa_record = QARecord(
-                question=question,
-                type=question_type,
-                options=options,
-                answer=answer,
-                created_at=datetime.now()
-            )
-            db.add(qa_record)
-            db.commit()
-            msg = '已新增'
-        # 写入缓存
-        if Config.ENABLE_CACHE and cache is not None:
-            cache.set(question, answer, question_type, options)
-        return jsonify({'success': True, 'message': msg})
-    except Exception as e:
-        logger.error(f"手动录入题目失败: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': f'录入失败: {str(e)}'}), 500
+# 启动定时任务，每小时自动同步API Key
+scheduler = BackgroundScheduler()
+scheduler.add_job(sync_tokens_to_config, 'interval', hours=1, id='token_sync_job', replace_existing=True)
+scheduler.start()
 
 if __name__ == '__main__':
     # 开启应用

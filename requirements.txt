@@ -8,3 +8,6 @@ redis
 cryptography
 SQLAlchemy
 markdown
+pandas
+tabulate
+apscheduler

@@ -74,24 +74,6 @@ AI题库服务是一个基于OpenAI API的问题解答服务，专为[OCS (Onlin
 }
 ```
 
-### 统计信息接口
-
-**URL**: `/api/stats`
-
-**方法**: `GET`
-
-**响应**:
-
-```json
-{
-  "version": "1.0.0",
-  "uptime": 1621234567.89,
-  "model": "gpt-3.5-turbo",
-  "cache_enabled": true,
-  "cache_size": 123
-}
-```
-
 ## OCS配置示例
 
 在OCS的自定义题库配置中添加如下配置：

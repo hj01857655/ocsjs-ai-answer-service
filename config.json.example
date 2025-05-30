@@ -8,7 +8,7 @@
   "openai": {
     "api_key": "your_api_key_here",
     "model": "gpt-3.5-turbo",
-    "api_base": "https://api.openai.com/v1/"
+    "api_base": "https://veloera.wei.bi"
   },
   "logging": {
     "level": "INFO"

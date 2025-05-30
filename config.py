@@ -33,8 +33,9 @@ class Config:
     
     # OpenAI配置
     OPENAI_API_KEY = _config.get('openai', {}).get('api_key')
-    OPENAI_MODEL = _config.get('openai', {}).get('model', "gpt-4o")
-    OPENAI_API_BASE = _config.get('openai', {}).get('api_base', 'https://veloera.wei.bi/v1')
+    OPENAI_MODEL = _config.get('openai', {}).get('model', "gpt-4.1-mini")
+    OPENAI_MODELS = _config.get('openai', {}).get('models', ["gpt-4o", "gpt-4.1-mini", "gpt-4.1-nano"])
+    OPENAI_API_BASE = _config.get('openai', {}).get('api_base', 'https://veloera.wei.bi')
     OPENAI_TEMPERATURE = float(_config.get('response', {}).get('temperature', 0.7))
     OPENAI_MAX_TOKENS = int(_config.get('response', {}).get('max_tokens', 500))
     
@@ -72,3 +73,64 @@ class Config:
     REDIS_PORT = int(_config.get('redis', {}).get('port', 6379))
     REDIS_PASSWORD = _config.get('redis', {}).get('password', "")
     REDIS_DB = int(_config.get('redis', {}).get('db', 0))
+
+def update_config(new_config):
+    """更新系统配置"""
+    from config import Config
+    import json
+    # 更新运行时配置
+    Config.ENABLE_CACHE = new_config.get('ENABLE_CACHE', Config.ENABLE_CACHE)
+    Config.CACHE_EXPIRATION = new_config.get('CACHE_EXPIRATION', Config.CACHE_EXPIRATION)
+    Config.ENABLE_RECORD = new_config.get('ENABLE_RECORD', Config.ENABLE_RECORD)
+    Config.OPENAI_API_KEY = new_config.get('OPENAI_API_KEY', Config.OPENAI_API_KEY)
+    Config.OPENAI_MODEL = new_config.get('OPENAI_MODEL', Config.OPENAI_MODEL)
+    Config.OPENAI_MODELS = new_config.get('OPENAI_MODELS', Config.OPENAI_MODELS)
+    Config.OPENAI_API_BASE = new_config.get('OPENAI_API_BASE', Config.OPENAI_API_BASE)
+    Config.OPENAI_TEMPERATURE = new_config.get('OPENAI_TEMPERATURE', Config.OPENAI_TEMPERATURE)
+    Config.OPENAI_MAX_TOKENS = new_config.get('OPENAI_MAX_TOKENS', Config.OPENAI_MAX_TOKENS)
+    Config.ACCESS_TOKEN = new_config.get('ACCESS_TOKEN', Config.ACCESS_TOKEN)
+    config_data = {
+        'service': {
+            'host': Config.HOST,
+            'port': Config.PORT,
+            'debug': Config.DEBUG
+        },
+        'openai': {
+            'api_key': Config.OPENAI_API_KEY,
+            'model': Config.OPENAI_MODEL,
+            'models': Config.OPENAI_MODELS,
+            'api_base': Config.OPENAI_API_BASE
+        },
+        'cache': {
+            'enable': Config.ENABLE_CACHE,
+            'expiration': Config.CACHE_EXPIRATION
+        },
+        'security': {
+            'access_token': Config.ACCESS_TOKEN,
+            'secret_key': Config.SECRET_KEY if hasattr(Config, 'SECRET_KEY') else os.urandom(24).hex()
+        },
+        'database': {
+            'type': Config.DB_TYPE,
+            'host': Config.DB_HOST,
+            'port': Config.DB_PORT,
+            'user': Config.DB_USER,
+            'password': Config.DB_PASSWORD,
+            'name': Config.DB_NAME
+        },
+        'redis': {
+            'enabled': Config.REDIS_ENABLED,
+            'host': Config.REDIS_HOST,
+            'port': Config.REDIS_PORT,
+            'password': Config.REDIS_PASSWORD,
+            'db': Config.REDIS_DB
+        },
+        'record': {
+            'enable': Config.ENABLE_RECORD
+        }
+    }
+    try:
+        with open('config.json', 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+        return True
+    except Exception as e:
+        raise e

@@ -209,3 +209,36 @@ textarea {
 ::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
+/* 题库统计卡片样式 */
+.card-counter {
+    box-shadow: 2px 2px 10px #DADADA;
+    margin: 20px 0;
+    padding: 20px 10px;
+    background-color: #fff;
+    height: 100px;
+    border-radius: 8px;
+    transition: .3s linear all;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+.card-counter.primary { border-left: 5px solid #007bff; }
+.card-counter.success { border-left: 5px solid #28a745; }
+.card-counter.info { border-left: 5px solid #17a2b8; }
+.card-counter .bi {
+    font-size: 2.5rem;
+    margin-right: 15px;
+    color: #007bff;
+}
+.card-counter.success .bi { color: #28a745; }
+.card-counter.info .bi { color: #17a2b8; }
+.card-counter .count-numbers {
+    font-size: 2rem;
+    font-weight: bold;
+    display: block;
+}
+.card-counter .count-name {
+    font-size: 1rem;
+    color: #888;
+}
