@@ -1,52 +1,188 @@
-{% extends 'base.html' %}
-{% block title %}EduBrain AI - 登录{% endblock %}
-{% block content %}
-<div class="container login-container mt-5">
-    <div class="card login-card">
-        <div class="login-header">
-            <div class="brand-logo"><i class="bi bi-brain"></i></div>
-            <h4>EduBrain AI</h4>
-            <p class="mb-0">请登录系统</p>
-        </div>
-        <div class="login-body">
-            {% if error %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ error }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduBrain AI - 登录</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #007bff, #6610f2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            max-width: 400px;
+            width: 100%;
+        }
+        .login-card {
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .login-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+        .login-header {
+            background: #fff;
+            padding: 2rem 1.5rem 1rem 1.5rem;
+            text-align: center;
+        }
+        .brand-logo {
+            font-size: 2.5rem;
+            color: #007bff;
+            margin-bottom: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .login-body {
+            background: #f8f9fa;
+            padding: 2rem 1.5rem 1.5rem 1.5rem;
+        }
+        .login-footer {
+            background: #fff;
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.95rem;
+            color: #888;
+        }
+        .form-control:focus, .btn:focus {
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            border-color: #86b7fe;
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, #007bff, #6610f2);
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(90deg, #0069d9, #5e0ae6);
+            transform: translateY(-2px);
+        }
+        .back-to-home {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .back-to-home:hover {
+            transform: translateX(-5px);
+            color: white;
+        }
+        .input-group-text {
+            background-color: #f8f9fa;
+            border-right: none;
+        }
+        .form-control {
+            border-left: none;
+        }
+        .form-control:focus + .input-group-text,
+        .input-group-text + .form-control:focus {
+            border-color: #86b7fe;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-to-home">
+        <i class="bi bi-arrow-left me-2"></i> 返回首页
+    </a>
+
+    <div class="container login-container">
+        <div class="card login-card">
+            <div class="login-header">
+                <div class="brand-logo"><i class="bi bi-brain"></i></div>
+                <h4>EduBrain AI</h4>
+                <p class="mb-0">请登录系统</p>
             </div>
-            {% endif %}
-            
-            <form method="POST" action="{{ url_for('login') }}">
-                <div class="mb-3">
-                    <label for="username" class="form-label">用户名</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-person"></i></span>
-                        <input type="text" class="form-control" id="username" name="username" placeholder="请输入用户名" required>
+            <div class="login-body">
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endif %}
+                <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" placeholder="请输入用户名" required autocomplete="username">
+                        </div>
                     </div>
-                </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">密码</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                        <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required autocomplete="current-password">
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                     </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                        <label class="form-check-label" for="remember">记住我</label>
+                    </div>
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>登录
+                        </button>
+                    </div>
+                </form>
+                <div class="mt-4 text-center">
+                    <p>还没有账号？ <a href="{{ url_for('register') }}" class="text-decoration-none">立即注册</a></p>
                 </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                    <label class="form-check-label" for="remember">记住我</label>
-                </div>
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary">登录</button>
-                </div>
-            </form>
-            
-            <div class="mt-4 text-center">
-                <p>还没有账号？ <a href="{{ url_for('register') }}" class="text-decoration-none">立即注册</a></p>
             </div>
-        </div>
-        <div class="login-footer">
-            <p class="mb-0">EduBrain AI &copy; {{ current_year }} 版权所有</p>
+            <div class="login-footer">
+                <p class="mb-0">EduBrain AI &copy; {{ current_year|default(2025) }} 版权所有</p>
+            </div>
         </div>
     </div>
-</div>
-{% endblock %} 
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const togglePassword = document.getElementById('togglePassword');
+            const password = document.getElementById('password');
+            const loginForm = document.getElementById('loginForm');
+            
+            // 切换密码可见性
+            togglePassword.addEventListener('click', function() {
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+                this.querySelector('i').classList.toggle('bi-eye');
+                this.querySelector('i').classList.toggle('bi-eye-slash');
+            });
+            
+            // 表单提交动画
+            loginForm.addEventListener('submit', function() {
+                const submitBtn = this.querySelector('button[type="submit"]');
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>登录中...';
+                submitBtn.disabled = true;
+            });
+            
+            // 自动聚焦第一个空输入框
+            if (document.getElementById('username').value === '') {
+                document.getElementById('username').focus();
+            } else {
+                document.getElementById('password').focus();
+            }
+        });
+    </script>
+</body>
+</html>

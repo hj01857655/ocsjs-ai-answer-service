@@ -1,118 +1,597 @@
-{% extends 'base.html' %}
-{% block title %}EduBrain AI - 智能答题辅助系统{% endblock %}
-{% block content %}
-<section class="hero-section">
-    <div class="container text-center">
-        <h1 class="display-4 fw-bold">EduBrain AI 智能答题辅助系统</h1>
-        <p class="lead mt-3">为在线教育平台提供高效智能的AI答题服务</p>
-        {% if not session.get('user_id') %}
-        <div class="mt-5">
-            <a href="{{ url_for('register') }}" class="btn btn-light btn-lg me-3">立即注册</a>
-            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">登录系统</a>
-        </div>
-        {% else %}
-        <div class="mt-5">
-            <a href="{{ url_for('search_page') }}" class="btn btn-light btn-lg me-3">题目搜索</a>
-            {% if session.get('is_admin') %}
-            <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-lg me-3">管理系统</a>
-            {% endif %}
-            <a href="{{ url_for('docs') }}" class="btn btn-outline-light btn-lg">API文档</a>
-        </div>
-        {% endif %}
-    </div>
-</section>
-<section class="py-5">
-    <div class="container">
-        <h2 class="text-center mb-5">系统特点</h2>
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="card feature-card">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">
-                            <i class="bi bi-lightning-charge"></i>
-                        </div>
-                        <h4>高效处理</h4>
-                        <p>支持多种题型智能识别，快速响应API请求，提供准确答案</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card feature-card">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">
-                            <i class="bi bi-database"></i>
-                        </div>
-                        <h4>题库管理</h4>
-                        <p>完整的题库管理系统，支持导入导出，分类检索，批量操作</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card feature-card">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">
-                            <i class="bi bi-graph-up"></i>
-                        </div>
-                        <h4>数据统计</h4>
-                        <p>实时监控系统运行状态，全面的数据统计和日志记录功能</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-<section class="py-5 bg-light">
-    <div class="container">
-        <h2 class="text-center mb-5">适用场景</h2>
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <h3>智能在线教育</h3>
-                <p>为在线教育平台提供智能答题服务，支持单选题、多选题、判断题、填空题等多种题型。</p>
-                <h3>学习辅助工具</h3>
-                <p>帮助学生理解和掌握知识点，提供详细的解题思路和答案解析。</p>
-                <h3>教学质量提升</h3>
-                <p>通过AI分析学生答题情况，为教师提供教学改进建议和学生学习情况报告。</p>
-            </div>
-            <div class="col-md-6">
-                <img src="https://via.placeholder.com/600x400?text=EduBrain+AI" alt="EduBrain AI应用场景" class="img-fluid rounded shadow">
-            </div>
-        </div>
-    </div>
-</section>
-<footer class="footer">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-6">
-                <h5>EduBrain AI</h5>
-                <p>智能答题辅助系统 - 为在线教育提供强大的AI支持</p>
-            </div>
-            <div class="col-md-3">
-                <h5>链接</h5>
-                <ul class="list-unstyled">
-                    <li><a href="{{ url_for('index') }}" class="text-decoration-none">首页</a></li>
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduBrain AI - 智能答题辅助系统</title>
+    <!-- CSS 引入 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- 自定义头部样式 -->
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --success-color: #198754;
+            --info-color: #0dcaf0;
+            --dark-color: #212529;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* 导航样式 */
+        .navbar {
+            padding: 1rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-scrolled {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 0.5rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            margin: 0 0.5rem;
+            position: relative;
+        }
+
+        .nav-link:after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            background: var(--primary-color);
+            bottom: 0;
+            left: 0;
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover:after {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top" id="mainNav">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="bi bi-brain me-2 text-primary"></i>EduBrain AI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/"><i class="bi bi-house-door me-1"></i>首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/ai-search"><i class="bi bi-search me-1"></i>AI搜题</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/docs"><i class="bi bi-file-earmark-text me-1"></i>API文档</a>
+                    </li>
                     {% if session.get('user_id') %}
-                    <li><a href="{{ url_for('docs') }}" class="text-decoration-none">API文档</a></li>
-                    {% if session.get('is_admin') %}
-                    <li><a href="{{ url_for('dashboard') }}" class="text-decoration-none">管理系统</a></li>
-                    {% endif %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-1"></i>{{ session.get('username', '用户') }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                            {% if session.get('is_admin') %}
+                            <li><a class="dropdown-item" href="/dashboard"><i
+                                        class="bi bi-speedometer2 me-2"></i>管理面板</a></li>
+                            <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear me-2"></i>系统设置</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            {% endif %}
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i
+                                        class="bi bi-box-arrow-right me-2"></i>退出登录</a></li>
+                        </ul>
+                    </li>
                     {% else %}
-                    <li><a href="{{ url_for('login') }}" class="text-decoration-none">登录</a></li>
-                    <li><a href="{{ url_for('register') }}" class="text-decoration-none">注册</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}"><i
+                                class="bi bi-box-arrow-in-right me-1"></i>登录</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-primary text-white px-3" href="{{ url_for('register') }}"><i
+                                class="bi bi-person-plus me-1"></i>注册</a>
+                    </li>
                     {% endif %}
                 </ul>
             </div>
-            <div class="col-md-3">
-                <h5>联系我们</h5>
-                <ul class="list-unstyled">
-                    <li><i class="bi bi-envelope"></i> support@edubrain.ai</li>
-                    <li><i class="bi bi-telephone"></i> +86 123 4567 8901</li>
-                </ul>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main style="padding-top: 5rem;">
+        <section class="hero-section py-5 mb-4">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-6 text-center text-lg-start">
+                        <h1 class="display-3 fw-bold text-gradient mb-3">EduBrain AI</h1>
+                        <h2 class="h2 mb-4">智能答题辅助系统</h2>
+                        <p class="lead mb-4">为在线教育平台提供高效智能的AI答题服务，提升学习效率和教学质量</p>
+
+                        {% if not session.get('user_id') %}
+                        <div class="mt-5 d-flex flex-wrap gap-3 justify-content-center justify-content-lg-start">
+                            <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-person-plus me-2"></i>立即注册
+                            </a>
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>登录系统
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="mt-5 d-flex flex-wrap gap-3 justify-content-center justify-content-lg-start">
+                            <a href="{{ url_for('ai_search_page') }}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-search me-2"></i>AI实时搜题
+                            </a>
+                            {% if session.get('is_admin') %}
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-info btn-lg text-white">
+                                <i class="bi bi-speedometer2 me-2"></i>管理系统
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('docs') }}" class="btn btn-outline-primary btn-lg">
+                                <i class="bi bi-file-earmark-text me-2"></i>API文档
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-4 d-none d-lg-block">
+                            <div class="d-flex align-items-center">
+                                <div class="stats-item me-4">
+                                    <div class="h5 mb-0"><i class="bi bi-lightning-charge text-warning"></i> 快速响应</div>
+                                    <small class="text-muted">毫秒级处理速度</small>
+                                </div>
+                                <div class="stats-item me-4">
+                                    <div class="h5 mb-0"><i class="bi bi-shield-check text-success"></i> 高精准度</div>
+                                    <small class="text-muted">智能答题系统</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6 mt-5 mt-lg-0 text-center">
+                        <div class="hero-image-container position-relative">
+                            <img src="https://cdn.jsdelivr.net/gh/LynnGuo666/cdn@main/images/ai-education.svg"
+                                alt="EduBrain AI" class="img-fluid hero-image">
+                            <div class="floating-badge badge-primary position-absolute top-0 end-0">
+                                <i class="bi bi-robot"></i> 智能答题
+                            </div>
+                            <div class="floating-badge badge-success position-absolute bottom-0 start-0">
+                                <i class="bi bi-lightning"></i> 高效响应
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <hr>
-        <div class="text-center">
-            <p>© {{ current_year }} EduBrain AI. 保留所有权利.</p>
-        </div>
-    </div>
-</footer>
-{% endblock %}
+        </section>
+        <section class="features-section py-5">
+            <div class="container">
+                <div class="text-center mb-5">
+                    <h2 class="section-title fw-bold position-relative d-inline-block">系统特点</h2>
+                    <p class="text-muted mt-3">提供全方位的智能答题和题库管理功能</p>
+                </div>
+
+                <div class="row g-4 justify-content-center">
+                    <div class="col-md-4 col-sm-6">
+                        <div class="card feature-card h-100 border-0 shadow-sm hover-card">
+                            <div class="card-body p-4">
+                                <div class="feature-icon-wrapper mb-3">
+                                    <div class="feature-icon bg-primary-soft rounded-circle text-primary">
+                                        <i class="bi bi-lightning-charge-fill"></i>
+                                    </div>
+                                </div>
+                                <h4 class="card-title mb-3">高效处理</h4>
+                                <p class="card-text text-muted">支持多种题型智能识别，毫秒级响应速度，提供准确答案和解析</p>
+                                <div class="feature-stats mt-3">
+                                    <span class="badge bg-primary-soft text-primary me-2">快速响应</span>
+                                    <span class="badge bg-primary-soft text-primary">高精准度</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 col-sm-6">
+                        <div class="card feature-card h-100 border-0 shadow-sm hover-card">
+                            <div class="card-body p-4">
+                                <div class="feature-icon-wrapper mb-3">
+                                    <div class="feature-icon bg-success-soft rounded-circle text-success">
+                                        <i class="bi bi-database-fill"></i>
+                                    </div>
+                                </div>
+                                <h4 class="card-title mb-3">题库管理</h4>
+                                <p class="card-text text-muted">完整的题库管理系统，支持导入导出，分类检索，批量操作和数据分析</p>
+                                <div class="feature-stats mt-3">
+                                    <span class="badge bg-success-soft text-success me-2">批量操作</span>
+                                    <span class="badge bg-success-soft text-success">智能分类</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 col-sm-6">
+                        <div class="card feature-card h-100 border-0 shadow-sm hover-card">
+                            <div class="card-body p-4">
+                                <div class="feature-icon-wrapper mb-3">
+                                    <div class="feature-icon bg-info-soft rounded-circle text-info">
+                                        <i class="bi bi-graph-up-arrow"></i>
+                                    </div>
+                                </div>
+                                <h4 class="card-title mb-3">数据统计</h4>
+                                <p class="card-text text-muted">实时监控系统运行状态，提供全面的数据统计和日志记录功能</p>
+                                <div class="feature-stats mt-3">
+                                    <span class="badge bg-info-soft text-info me-2">实时监控</span>
+                                    <span class="badge bg-info-soft text-info">可视化报表</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-5">
+                    <a href="{{ url_for('docs') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-info-circle me-2"></i>了解更多功能
+                    </a>
+                </div>
+            </div>
+        </section>
+        <section class="use-cases-section py-5 bg-light">
+            <div class="container">
+                <div class="text-center mb-5">
+                    <h2 class="section-title fw-bold position-relative d-inline-block">适用场景</h2>
+                    <p class="text-muted mt-3">为各类教育场景提供智能解决方案</p>
+                </div>
+
+                <div class="row g-4 align-items-center">
+                    <div class="col-lg-6">
+                        <div class="use-cases-content">
+                            <div class="use-case-item mb-4 p-3 bg-white rounded shadow-sm">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="use-case-icon me-3 bg-primary-soft rounded-circle text-primary">
+                                        <i class="bi bi-mortarboard-fill"></i>
+                                    </div>
+                                    <h3 class="h4 mb-0">智能在线教育</h3>
+                                </div>
+                                <p class="mb-0">为在线教育平台提供智能答题服务，支持单选题、多选题、判断题、填空题等多种题型，提高学习效率。</p>
+                            </div>
+
+                            <div class="use-case-item mb-4 p-3 bg-white rounded shadow-sm">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="use-case-icon me-3 bg-success-soft rounded-circle text-success">
+                                        <i class="bi bi-book-fill"></i>
+                                    </div>
+                                    <h3 class="h4 mb-0">学习辅助工具</h3>
+                                </div>
+                                <p class="mb-0">帮助学生理解和掌握知识点，提供详细的解题思路和答案解析，加强学习效果。</p>
+                            </div>
+
+                            <div class="use-case-item p-3 bg-white rounded shadow-sm">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="use-case-icon me-3 bg-info-soft rounded-circle text-info">
+                                        <i class="bi bi-bar-chart-fill"></i>
+                                    </div>
+                                    <h3 class="h4 mb-0">教学质量提升</h3>
+                                </div>
+                                <p class="mb-0">通过AI分析学生答题情况，为教师提供教学改进建议和学生学习情况报告，实现教学精准化。</p>
+                            </div>
+
+                            <div class="mt-4">
+                                <a href="{{ url_for('ai_search_page') }}" class="btn btn-primary">
+                                    <i class="bi bi-rocket-takeoff me-2"></i>开始使用
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="use-cases-image position-relative">
+                            <img src="https://cdn.jsdelivr.net/gh/LynnGuo666/cdn@main/images/online-education.svg"
+                                alt="EduBrain AI应用场景" class="img-fluid rounded shadow-lg">
+
+                            <div class="feature-badge position-absolute top-0 end-0 bg-white p-3 rounded shadow-sm">
+                                <div class="d-flex align-items-center">
+                                    <div class="badge-icon me-2 text-primary">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    </div>
+                                    <div class="badge-text">
+                                        <h5 class="mb-0 fs-6">兼容OCS接口</h5>
+                                        <small class="text-muted">无缝集成</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="feature-badge position-absolute bottom-0 start-0 bg-white p-3 rounded shadow-sm">
+                                <div class="d-flex align-items-center">
+                                    <div class="badge-icon me-2 text-success">
+                                        <i class="bi bi-shield-check"></i>
+                                    </div>
+                                    <div class="badge-text">
+                                        <h5 class="mb-0 fs-6">安全可靠</h5>
+                                        <small class="text-muted">数据加密保护</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <footer class="footer py-5 mt-5 bg-dark text-white">
+            <div class="container">
+                <div class="row g-4">
+                    <div class="col-lg-4 col-md-6">
+                        <div class="footer-brand mb-4">
+                            <h4 class="text-gradient-light mb-3"><i class="bi bi-brain me-2"></i>EduBrain AI</h4>
+                            <p class="text-light-muted">智能答题辅助系统 - 为在线教育提供强大的AI支持，实现教学智能化和学习体验提升</p>
+                        </div>
+                        <div class="social-links">
+                            <a href="#" class="social-link me-2" aria-label="GitHub">
+                                <i class="bi bi-github"></i>
+                            </a>
+                            <a href="#" class="social-link me-2" aria-label="Twitter">
+                                <i class="bi bi-twitter-x"></i>
+                            </a>
+                            <a href="#" class="social-link" aria-label="LinkedIn">
+                                <i class="bi bi-linkedin"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-2 col-md-6 col-6">
+                        <h5 class="text-white mb-4 footer-title">快速链接</h5>
+                        <ul class="list-unstyled footer-links">
+                            <li class="mb-2"><a href="{{ url_for('index') }}" class="footer-link"><i
+                                        class="bi bi-house-door me-2"></i>首页</a></li>
+                            {% if session.get('user_id') %}
+                            <li class="mb-2"><a href="{{ url_for('docs') }}" class="footer-link"><i
+                                        class="bi bi-file-earmark-text me-2"></i>API文档</a></li>
+                            <li class="mb-2"><a href="{{ url_for('ai_search_page') }}" class="footer-link"><i
+                                        class="bi bi-search me-2"></i>AI搜题</a></li>
+                            {% if session.get('is_admin') %}
+                            <li class="mb-2"><a href="{{ url_for('dashboard') }}" class="footer-link"><i
+                                        class="bi bi-speedometer2 me-2"></i>管理系统</a></li>
+                            {% endif %}
+                            {% else %}
+                            <li class="mb-2"><a href="{{ url_for('auth.login') }}" class="footer-link"><i
+                                        class="bi bi-box-arrow-in-right me-2"></i>登录</a></li>
+                            <li class="mb-2"><a href="{{ url_for('register') }}" class="footer-link"><i
+                                        class="bi bi-person-plus me-2"></i>注册</a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+
+                    <div class="col-lg-3 col-md-6 col-6">
+                        <h5 class="text-white mb-4 footer-title">支持的功能</h5>
+                        <ul class="list-unstyled footer-links">
+                            <li class="mb-2"><a href="#" class="footer-link"><i
+                                        class="bi bi-check2-circle me-2"></i>单选题自动答题</a></li>
+                            <li class="mb-2"><a href="#" class="footer-link"><i
+                                        class="bi bi-check2-all me-2"></i>多选题自动答题</a></li>
+                            <li class="mb-2"><a href="#" class="footer-link"><i
+                                        class="bi bi-question-circle me-2"></i>判断题自动答题</a></li>
+                            <li class="mb-2"><a href="#" class="footer-link"><i
+                                        class="bi bi-pencil-square me-2"></i>填空题自动答题</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="col-lg-3 col-md-6">
+                        <h5 class="text-white mb-4 footer-title">联系我们</h5>
+                        <ul class="list-unstyled footer-contact">
+                            <li class="mb-3 d-flex">
+                                <i class="bi bi-envelope-fill me-2 text-primary"></i>
+                                <span>support@edubrain.ai</span>
+                            </li>
+                            <li class="mb-3 d-flex">
+                                <i class="bi bi-telephone-fill me-2 text-primary"></i>
+                                <span>+86 123 4567 8901</span>
+                            </li>
+                            <li class="d-flex">
+                                <i class="bi bi-geo-alt-fill me-2 text-primary"></i>
+                                <span>中国·深圳</span>
+                            </li>
+                        </ul>
+                        <div class="newsletter mt-4">
+                            <h6 class="text-white mb-3">订阅更新</h6>
+                            <div class="input-group">
+                                <input type="email" class="form-control" placeholder="您的邮箱" aria-label="您的邮箱">
+                                <button class="btn btn-primary" type="button">订阅</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="mt-4 mb-3 border-light">
+
+                <div class="row align-items-center">
+                    <div class="col-md-6 text-center text-md-start">
+                        <p class="mb-md-0">&copy; {{ current_year }} EduBrain AI. 保留所有权利.</p>
+                    </div>
+                    <div class="col-md-6 text-center text-md-end">
+                        <ul class="list-inline mb-0">
+                            <li class="list-inline-item"><a href="#" class="text-light-muted">隐私政策</a></li>
+                            <li class="list-inline-item"><span class="text-muted mx-2">|</span></li>
+                            <li class="list-inline-item"><a href="#" class="text-light-muted">使用条款</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+        <!-- 添加必要的CSS样式 -->
+        <style>
+            /* 文本渐变效果 */
+            .text-gradient {
+                background: linear-gradient(90deg, #007bff, #6610f2);
+                -webkit-background-clip: text;
+                background-clip: text;
+                /* 标准属性 */
+                -webkit-text-fill-color: transparent;
+                color: transparent;
+                /* 兼容替代 */
+            }
+
+            .text-gradient-light {
+                background: linear-gradient(90deg, #ffffff, #ced4da);
+                -webkit-background-clip: text;
+                background-clip: text;
+                /* 标准属性 */
+                -webkit-text-fill-color: transparent;
+                color: transparent;
+                /* 兼容替代 */
+            }
+
+            /* 背景颜色类 */
+            .bg-primary-soft {
+                background-color: rgba(13, 110, 253, 0.1);
+            }
+
+            .bg-success-soft {
+                background-color: rgba(25, 135, 84, 0.1);
+            }
+
+            .bg-info-soft {
+                background-color: rgba(13, 202, 240, 0.1);
+            }
+
+            /* 浮动徽章 */
+            .floating-badge {
+                padding: 0.75rem 1rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+                z-index: 1;
+            }
+
+            .badge-primary {
+                background-color: rgba(13, 110, 253, 0.9);
+                color: white;
+            }
+
+            .badge-success {
+                background-color: rgba(25, 135, 84, 0.9);
+                color: white;
+            }
+
+            /* 特性图标 */
+            .feature-icon-wrapper {
+                display: flex;
+                justify-content: center;
+            }
+
+            .feature-icon {
+                width: 60px;
+                height: 60px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.75rem;
+            }
+
+            .use-case-icon {
+                width: 50px;
+                height: 50px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.5rem;
+            }
+
+            /* 卡片悬停效果 */
+            .hover-card {
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+
+            .hover-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+            }
+
+            /* 页脚样式 */
+            .footer {
+                background-color: #212529;
+            }
+
+            .footer-title {
+                position: relative;
+                padding-bottom: 0.75rem;
+            }
+
+            .footer-title:after {
+                content: '';
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                width: 50px;
+                height: 2px;
+                background: #0d6efd;
+            }
+
+            .footer-link {
+                color: #adb5bd;
+                text-decoration: none;
+                transition: color 0.3s ease;
+            }
+
+            .footer-link:hover {
+                color: #ffffff;
+                text-decoration: none;
+            }
+
+            .social-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background-color: rgba(255, 255, 255, 0.1);
+                color: #ffffff;
+                transition: all 0.3s ease;
+            }
+
+            .social-link:hover {
+                background-color: #0d6efd;
+                color: #ffffff;
+            }
+
+            .text-light-muted {
+                color: #adb5bd;
+            }
+        </style>
+    </main>
+
+    <!-- JavaScript 引入 -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 自定义脚本 -->
+    <script>
+        // 滚动时导航栏效果
+        window.addEventListener('scroll', function () {
+            const navbar = document.getElementById('mainNav');
+            if (window.scrollY > 50) {
+                navbar.classList.add('navbar-scrolled');
+            } else {
+                navbar.classList.remove('navbar-scrolled');
+            }
+        });
+    </script>
+</body>
+
+</html>

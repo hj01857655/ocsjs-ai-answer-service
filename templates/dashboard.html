@@ -1,35 +1,260 @@
 {% extends 'base.html' %}
 {% block title %}EduBrain AI - 智能题库统计面板{% endblock %}
+
+{% block head %}
+<!-- Chart.js不需要单独的CSS文件 -->
+<style>
+    .dashboard-card {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: none;
+        height: 100%;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+        font-weight: 500;
+    }
+    .stat-card {
+        border-left: 4px solid #007bff;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .stat-card .stat-icon {
+        font-size: 2rem;
+        color: #007bff;
+        margin-right: 15px;
+    }
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    .stat-card .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    .refresh-btn {
+        transition: all 0.3s ease;
+    }
+    .refresh-btn:hover {
+        transform: rotate(180deg);
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(0,123,255,0.05);
+    }
+    .btn-action {
+        border-radius: 50px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+    }
+    .btn-action:hover {
+        transform: translateY(-2px);
+    }
+    .chart-container {
+        position: relative;
+        height: 250px;
+        width: 100%;
+    }
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        border-radius: 10px;
+    }
+    .system-status {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    .status-good {
+        background-color: #28a745;
+    }
+    .status-warning {
+        background-color: #ffc107;
+    }
+    .status-error {
+        background-color: #dc3545;
+    }
+    
+    /* 模态框平滑过渡效果 */
+    .modal {
+        transition: opacity 0.3s ease;
+    }
+    .modal-dialog {
+        transition: transform 0.3s ease;
+        transform: translate(0, -50px);
+    }
+    .modal.show .modal-dialog {
+        transform: translate(0, 0);
+    }
+    .modal-content {
+        box-shadow: 0 5px 15px rgba(0,0,0,.5);
+    }
+    /* 防止模态框内容闪烁 */
+    .modal-backdrop {
+        opacity: 0.5 !important;
+        transition: opacity 0.3s ease;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- 原dashboard主内容区，去除<nav>部分，直接放到content块 -->
-<div class="container mt-4">
+<!-- 仪表盘主内容 -->
+<div class="container-fluid mt-4">
+    <!-- 系统状态概览 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>系统概览</h4>
+                <button class="btn btn-sm btn-outline-primary refresh-btn" onclick="refreshDashboard()" title="刷新数据">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">系统信息</h5>
+        <!-- 统计卡片 -->
+        <div class="col-md-3 mb-4">
+            <div class="stat-card d-flex align-items-center">
+                <div class="stat-icon">
+                    <i class="bi bi-hdd-stack"></i>
                 </div>
-                <div class="card-body">
-                    <p><strong>版本：</strong>{{ version }}</p>
-                    <p><strong>缓存状态：</strong>{{ "已启用" if cache_enabled else "未启用" }}</p>
-                    <p><strong>缓存数量：</strong>{{ cache_size }}条</p>
-                    <p><strong>使用模型：</strong>{{ model }}</p>
-                    <p><strong>运行时长：</strong>{{ uptime }}</p>
+                <div>
+                    <div class="stat-value">{{ cache_size }}</div>
+                    <div class="stat-label">缓存数量</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="stat-card d-flex align-items-center">
+                <div class="stat-icon">
+                    <i class="bi bi-cpu"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ model }}</div>
+                    <div class="stat-label">当前模型</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="stat-card d-flex align-items-center">
+                <div class="stat-icon">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ uptime }}</div>
+                    <div class="stat-label">运行时长</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="stat-card d-flex align-items-center">
+                <div class="stat-icon">
+                    <i class="bi bi-info-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ version }}</div>
+                    <div class="stat-label">系统版本</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
+    
+    <!-- 系统状态和图表 -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-4">
+            <div class="card dashboard-card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">最近问答记录</h5>
-                    <button class="btn btn-light btn-sm" onclick="clearCache()">清除缓存</button>
+                    <h5 class="card-title mb-0">系统状态</h5>
                 </div>
                 <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            缓存状态
+                            <span>
+                                <span class="system-status {{ 'status-good' if cache_enabled else 'status-error' }}"></span>
+                                {{ "已启用" if cache_enabled else "未启用" }}
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            API密钥状态
+                            <span>
+                                <span class="system-status status-good" id="apiKeyStatus"></span>
+                                <span id="apiKeyStatusText">正常</span>
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            网络连接
+                            <span>
+                                <span class="system-status status-good"></span>
+                                正常
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            数据库状态
+                            <span>
+                                <span class="system-status status-good"></span>
+                                正常
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">问题类型分布</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="questionTypeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 问答记录表格 -->
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0"><i class="bi bi-list-ul me-2"></i>最近问答记录</h5>
+                    <div>
+                        <button class="btn btn-light btn-sm me-2" id="exportRecordsBtn">
+                            <i class="bi bi-download me-1"></i>导出数据
+                        </button>
+                        <button class="btn btn-light btn-sm" onclick="clearCache()">
+                            <i class="bi bi-trash me-1"></i>清除缓存
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table id="qa-records" class="table table-striped table-hover dt-responsive nowrap" style="width:100%">
-                            <thead>
+                        <table id="qa-records" class="table table-striped table-hover dt-responsive nowrap mb-0" style="width:100%">
+                            <thead class="table-light">
                                 <tr>
                                     <th>时间</th>
                                     <th>问题类型</th>
@@ -41,14 +266,21 @@
                             </thead>
                             <tbody>
                                 {% for record in records %}
-                                <!-- 
-                                调试信息:
-                                record类型: {{ record.__class__.__name__ }}
-                                record数据: {{ record }}
-                                -->
                                 <tr>
                                     <td data-order="{{ record.timestamp }}">{{ record.time }}</td>
-                                    <td>{{ record.type }}</td>
+                                    <td>
+                                        {% if record.type == 'single' %}
+                                            <span class="badge bg-primary">单选题</span>
+                                        {% elif record.type == 'multiple' %}
+                                            <span class="badge bg-success">多选题</span>
+                                        {% elif record.type == 'judgement' %}
+                                            <span class="badge bg-info">判断题</span>
+                                        {% elif record.type == 'completion' %}
+                                            <span class="badge bg-warning">填空题</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">未指定</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <div class="text-truncate" style="max-width: 300px;" title="{{ record.question }}">
                                             {{ record.question }}
@@ -65,35 +297,51 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-info me-1" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}">详情</button>
-                                        <button class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">编辑</button>
-                                        <button class="btn btn-sm btn-danger delete-record" data-record-id="{{ record.id }}">删除</button>
+                                        <button class="btn btn-sm btn-outline-info btn-action me-1" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}">
+                                            <i class="bi bi-eye"></i> 详情
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-warning btn-action me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}">
+                                            <i class="bi bi-pencil"></i> 编辑
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger btn-action delete-record" data-record-id="{{ record.id }}">
+                                            <i class="bi bi-trash"></i> 删除
+                                        </button>
                                     </td>
                                 </tr>
                                 
-                                <!-- 每条记录的模态框 -->
+                                <!-- 每条记录的详情模态框 -->
                                 <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" role="dialog" aria-labelledby="detailModalLabel{{ loop.index }}" aria-modal="true">
                                     <div class="modal-dialog modal-lg" role="document">
                                         <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">问答详情</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                                            <div class="modal-header bg-primary text-white">
+                                                <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">
+                                                    <i class="bi bi-info-circle me-2"></i>问答详情
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
                                             </div>
                                             <div class="modal-body">
                                                 <div class="mb-3">
-                                                    <h6 id="question-label{{ loop.index }}">问题：</h6>
+                                                    <h6 id="question-label{{ loop.index }}" class="d-flex align-items-center">
+                                                        <i class="bi bi-question-circle me-2 text-primary"></i>问题：
+                                                    </h6>
                                                     <pre class="border rounded p-3 bg-light" aria-labelledby="question-label{{ loop.index }}">{{ record.question }}</pre>
                                                 </div>
                                                 <div class="mb-3">
-                                                    <h6 id="type-label{{ loop.index }}">问题类型：</h6>
+                                                    <h6 id="type-label{{ loop.index }}" class="d-flex align-items-center">
+                                                        <i class="bi bi-tag me-2 text-primary"></i>问题类型：
+                                                    </h6>
                                                     <pre class="border rounded p-3 bg-light" aria-labelledby="type-label{{ loop.index }}">{{ record.type or '未指定' }}</pre>
                                                 </div>
                                                 <div class="mb-3">
-                                                    <h6 id="options-label{{ loop.index }}">选项：</h6>
+                                                    <h6 id="options-label{{ loop.index }}" class="d-flex align-items-center">
+                                                        <i class="bi bi-list-check me-2 text-primary"></i>选项：
+                                                    </h6>
                                                     <pre class="border rounded p-3 bg-light" aria-labelledby="options-label{{ loop.index }}">{{ record.options or '无' }}</pre>
                                                 </div>
                                                 <div class="mb-3">
-                                                    <h6 id="answer-label{{ loop.index }}">答案：</h6>
+                                                    <h6 id="answer-label{{ loop.index }}" class="d-flex align-items-center">
+                                                        <i class="bi bi-check-circle me-2 text-primary"></i>答案：
+                                                    </h6>
                                                     <pre class="border rounded p-3 bg-light" aria-labelledby="answer-label{{ loop.index }}">{{ record.answer }}</pre>
                                                 </div>
                                             </div>
@@ -108,8 +356,10 @@
                                 <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" role="dialog" aria-labelledby="editModalLabel{{ loop.index }}" aria-modal="true">
                                     <div class="modal-dialog modal-lg" role="document">
                                         <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="editModalLabel{{ loop.index }}">编辑问答</h5>
+                                            <div class="modal-header bg-warning">
+                                                <h5 class="modal-title" id="editModalLabel{{ loop.index }}">
+                                                    <i class="bi bi-pencil-square me-2"></i>编辑问答
+                                                </h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
                                             </div>
                                             <div class="modal-body">
@@ -145,7 +395,9 @@
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                                <button type="button" class="btn btn-primary" onclick="submitEditForm('{{ loop.index }}')">保存</button>
+                                                <button type="button" class="btn btn-primary" onclick="submitEditForm('{{ loop.index }}')">
+                                                    <i class="bi bi-save me-1"></i>保存更改
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -159,23 +411,478 @@
         </div>
     </div>
 </div>
-<!-- 删除确认模态框 -->
-<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- 结果消息模态框 -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" role="dialog" aria-modal="true">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteConfirmModalLabel">确认删除</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultModalLabel">操作结果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
             </div>
             <div class="modal-body">
-                <p>您确定要删除这条记录吗？</p>
-                <p class="text-danger"><strong>警告：</strong>此操作无法撤销，记录将从数据库中永久删除！</p>
+                <p id="resultMessage"></p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" aria-label="确定">确定</button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" role="dialog" aria-modal="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmModalLabel"><i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>确认删除</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div role="alert" aria-live="assertive">
+                    <p>您确定要删除这条记录吗？</p>
+                    <p class="text-danger"><strong>警告：</strong>此操作无法撤销，记录将从数据库中永久删除！</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="取消">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" aria-label="确认删除">
+                    <i class="bi bi-trash me-1" aria-hidden="true"></i>确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<script>
+// 初始化数据表格
+let qaTable;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 预初始化所有模态框，避免闪烁
+    preloadModals();
+    
+    // 初始化DataTables
+    qaTable = $('#qa-records').DataTable({
+        responsive: true,
+        language: {
+            "sProcessing": "处理中...",
+            "sLengthMenu": "显示 _MENU_ 项结果",
+            "sZeroRecords": "没有匹配结果",
+            "sInfo": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+            "sInfoEmpty": "显示第 0 至 0 项结果，共 0 项",
+            "sInfoFiltered": "(由 _MAX_ 项结果过滤)",
+            "sInfoPostFix": "",
+            "sSearch": "搜索:",
+            "sUrl": "",
+            "sEmptyTable": "表中数据为空",
+            "sLoadingRecords": "载入中...",
+            "sInfoThousands": ",",
+            "oPaginate": {
+                "sFirst": "首页",
+                "sPrevious": "上页",
+                "sNext": "下页",
+                "sLast": "末页"
+            }
+        },
+        order: [[0, 'desc']], // 默认按时间降序排序
+        pageLength: 10,
+        dom: '<"d-flex justify-content-between align-items-center mb-3"<"d-flex align-items-center"l><"d-flex"f>>t<"d-flex justify-content-between align-items-center mt-3"<"d-flex align-items-center"i><"d-flex"p>>',
+        drawCallback: function() {
+            // 表格重绘后重新绑定按钮事件
+            setupModalButtons();
+        }
+    });
+    
+    // 初始化问题类型分布图表
+    initQuestionTypeChart();
+    
+    // 删除记录功能
+    setupDeleteRecord();
+    
+    // 导出数据功能
+    setupExportData();
+    
+    // 定期刷新API密钥状态
+    refreshApiKeyStatus();
+    setInterval(refreshApiKeyStatus, 30000); // 每30秒刷新一次
+});
+
+// 预加载所有模态框
+function preloadModals() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        // 预先将模态框添加到DOM中，但保持隐藏状态
+        document.body.appendChild(modal);
+        
+        // 添加模态框关闭事件处理，正确管理焦点
+        modal.addEventListener('hidden.bs.modal', function() {
+            // 当模态框关闭时，将焦点返回到触发按钮
+            const triggerId = modal.getAttribute('data-trigger-button');
+            if (triggerId) {
+                const triggerButton = document.getElementById(triggerId);
+                if (triggerButton) {
+                    triggerButton.focus();
+                }
+            }
+            
+            // 确保模态框关闭后不会阻止屏幕阅读器
+            modal.removeAttribute('aria-hidden');
+        });
+        
+        // 初始化模态框实例
+        new bootstrap.Modal(modal, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+    });
+}
+
+// 设置模态框按钮的点击事件
+function setupModalButtons() {
+    // 给每个模态框按钮添加唯一ID，用于焦点管理
+    document.querySelectorAll('[data-bs-toggle="modal"]').forEach((button, index) => {
+        if (!button.id) {
+            button.id = 'modal-trigger-' + index;
+        }
+        
+        // 移除原有事件监听器以避免重复添加
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        
+        // 添加新的点击事件
+        newButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetModalId = this.getAttribute('data-bs-target');
+            const targetModal = document.querySelector(targetModalId);
+            
+            if (targetModal) {
+                // 将触发按钮ID存储到模态框中，用于焦点返回
+                targetModal.setAttribute('data-trigger-button', this.id);
+                
+                // 显示模态框
+                const modalInstance = bootstrap.Modal.getInstance(targetModal) || 
+                                     new bootstrap.Modal(targetModal);
+                modalInstance.show();
+            }
+        });
+    });
+    
+    // 确保模态框内的按钮也有正确的可访问性属性
+    document.querySelectorAll('.modal .btn').forEach(button => {
+        if (!button.hasAttribute('aria-label')) {
+            button.setAttribute('aria-label', button.textContent.trim());
+        }
+    });
+}
+
+// 初始化问题类型分布图表
+function initQuestionTypeChart() {
+    // 统计各类型问题数量
+    const typeCount = {
+        'single': 0,
+        'multiple': 0,
+        'judgement': 0,
+        'completion': 0,
+        'other': 0
+    };
+    
+    // 遍历表格数据计算各类型数量
+    document.querySelectorAll('#qa-records tbody tr').forEach(row => {
+        const typeCell = row.querySelector('td:nth-child(2)');
+        const typeText = typeCell.textContent.trim();
+        
+        if (typeText.includes('单选题')) {
+            typeCount.single++;
+        } else if (typeText.includes('多选题')) {
+            typeCount.multiple++;
+        } else if (typeText.includes('判断题')) {
+            typeCount.judgement++;
+        } else if (typeText.includes('填空题')) {
+            typeCount.completion++;
+        } else {
+            typeCount.other++;
+        }
+    });
+    
+    // 绘制图表
+    const ctx = document.getElementById('questionTypeChart').getContext('2d');
+    const questionTypeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['单选题', '多选题', '判断题', '填空题', '其他'],
+            datasets: [{
+                data: [
+                    typeCount.single,
+                    typeCount.multiple,
+                    typeCount.judgement,
+                    typeCount.completion,
+                    typeCount.other
+                ],
+                backgroundColor: [
+                    '#007bff',
+                    '#28a745',
+                    '#17a2b8',
+                    '#ffc107',
+                    '#6c757d'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        boxWidth: 15,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 设置删除记录功能
+function setupDeleteRecord() {
+    let recordIdToDelete = null;
+    
+    // 预加载所有模态框，避免闪烁
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        new bootstrap.Modal(modal, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+    });
+    
+    // 点击删除按钮时显示确认模态框
+    $('.delete-record').on('click', function() {
+        recordIdToDelete = $(this).data('record-id');
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')) || 
+                           new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        deleteModal.show();
+    });
+    
+    // 点击确认删除按钮时执行删除操作
+    $('#confirmDeleteBtn').on('click', function() {
+        if (recordIdToDelete) {
+            $.ajax({
+                url: '/api/record/delete',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ record_id: recordIdToDelete }),
+                success: function(response) {
+                    $('#deleteConfirmModal').modal('hide');
+                    $('#resultMessage').text(response.message);
+                    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                    resultModal.show();
+                    if (response.success) {
+                        $('#resultModal').on('hidden.bs.modal', function() {
+                            location.reload();
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    $('#deleteConfirmModal').modal('hide');
+                    let errorMessage = '删除失败';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage = response.message || errorMessage;
+                    } catch (e) {}
+                    $('#resultMessage').text(errorMessage);
+                    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                    resultModal.show();
+                }
+            });
+        }
+    });
+}
+
+// 设置导出数据功能
+function setupExportData() {
+    $('#exportRecordsBtn').on('click', function() {
+        // 获取表格数据
+        const data = [];
+        const headers = [];
+        
+        // 获取表头
+        $('#qa-records thead th').each(function() {
+            headers.push($(this).text().trim());
+        });
+        
+        // 移除最后一列操作列
+        headers.pop();
+        
+        // 添加数据行
+        $('#qa-records tbody tr').each(function() {
+            const rowData = [];
+            $(this).find('td').each(function(index) {
+                // 跳过最后一列操作列
+                if (index < headers.length) {
+                    rowData.push($(this).text().trim());
+                }
+            });
+            data.push(rowData);
+        });
+        
+        // 创建CSV内容
+        let csvContent = "data:text/csv;charset=utf-8,";
+        
+        // 添加表头
+        csvContent += headers.join(",") + "\r\n";
+        
+        // 添加数据行
+        data.forEach(function(row) {
+            // 处理每个单元格，确保逗号和引号正确处理
+            const processedRow = row.map(cell => {
+                // 如果单元格包含逗号或引号，用引号包裹并将引号替换为双引号
+                if (cell.includes(',') || cell.includes('"')) {
+                    return '"' + cell.replace(/"/g, '""') + '"';
+                }
+                return cell;
+            });
+            csvContent += processedRow.join(",") + "\r\n";
+        });
+        
+        // 创建下载链接
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `qa_records_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        
+        // 触发下载
+        link.click();
+        document.body.removeChild(link);
+    });
+}
+
+// 提交编辑表单
+function submitEditForm(formIndex) {
+    const form = document.getElementById('editForm' + formIndex);
+    const recordId = form.querySelector('input[name="record_id"]').value;
+    const question = form.querySelector('textarea[name="question"]').value;
+    const type = form.querySelector('select[name="type"]').value;
+    const options = form.querySelector('textarea[name="options"]').value;
+    const answer = form.querySelector('textarea[name="answer"]').value;
+    const data = {
+        record_id: recordId,
+        question: question,
+        type: type,
+        options: options,
+        answer: answer
+    };
+    
+    // 显示加载状态
+    const saveBtn = form.closest('.modal-content').querySelector('.modal-footer .btn-primary');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>保存中...';
+    saveBtn.disabled = true;
+    
+    $.ajax({
+        url: '/api/record/update',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function(response) {
+            $('#editModal' + formIndex).modal('hide');
+            $('#resultMessage').text(response.message);
+            var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+            resultModal.show();
+            if (response.success) {
+                $('#resultModal').on('hidden.bs.modal', function() {
+                    location.reload();
+                });
+            } else {
+                // 恢复按钮状态
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        },
+        error: function(xhr) {
+            $('#editModal' + formIndex).modal('hide');
+            let errorMessage = '更新失败';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                errorMessage = response.message || errorMessage;
+            } catch (e) {}
+            $('#resultMessage').text(errorMessage);
+            var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+            resultModal.show();
+            
+            // 恢复按钮状态
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+        }
+    });
+}
+
+// 清除缓存
+function clearCache() {
+    if (confirm('确定要清除所有缓存吗？')) {
+        $.ajax({
+            url: '/api/clear_cache',
+            type: 'POST',
+            success: function(response) {
+                $('#resultMessage').text(response.message || '缓存已清除');
+                var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                resultModal.show();
+                if (response.success) {
+                    $('#resultModal').on('hidden.bs.modal', function() {
+                        location.reload();
+                    });
+                }
+            },
+            error: function() {
+                $('#resultMessage').text('清除缓存失败');
+                var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                resultModal.show();
+            }
+        });
+    }
+}
+
+// 刷新仪表盘数据
+function refreshDashboard() {
+    location.reload();
+}
+
+// 刷新API密钥状态
+function refreshApiKeyStatus() {
+    fetch('/api/key_pool').then(res => res.json()).then(data => {
+        const statusElement = document.getElementById('apiKeyStatus');
+        const statusTextElement = document.getElementById('apiKeyStatusText');
+        
+        if (data.count > 0) {
+            statusElement.className = 'system-status status-good';
+            statusTextElement.textContent = '正常';
+        } else {
+            statusElement.className = 'system-status status-error';
+            statusTextElement.textContent = '异常';
+        }
+    }).catch(() => {
+        const statusElement = document.getElementById('apiKeyStatus');
+        const statusTextElement = document.getElementById('apiKeyStatusText');
+        statusElement.className = 'system-status status-error';
+        statusTextElement.textContent = '无法连接';
+    });
+}
+</script>
 {% endblock %}

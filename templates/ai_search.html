@@ -1,0 +1,990 @@
+{% extends 'base.html' %}
+{% block title %}EduBrain AI - AI实时搜题{% endblock %}
+
+{% block head %}
+<style>
+    /* 现代化AI搜题页面样式 */
+    .search-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .search-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: none;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .search-card:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .search-card .card-body {
+        padding: 2rem;
+    }
+    
+    .search-card .card-header {
+        padding: 1rem 1.5rem;
+        border-bottom: none;
+    }
+    
+    /* 表单元素样式 */
+    .form-control, .form-select {
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        border: 1px solid #dee2e6;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    textarea.form-control {
+        min-height: 100px;
+        resize: vertical;
+    }
+    
+    /* 按钮样式 */
+    .btn-search {
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        border: none;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    }
+    
+    .btn-search:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        background: linear-gradient(135deg, #0069d9, #004494);
+    }
+    
+    .btn-search:active {
+        transform: translateY(0);
+    }
+    
+    .btn-search:disabled {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        box-shadow: none;
+    }
+    
+    /* 加载动画 */
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+    
+    .loading-spinner {
+        width: 3rem;
+        height: 3rem;
+        border-width: 0.25rem;
+    }
+    
+    /* 结果卡片样式 */
+    .result-card {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-top: 2rem;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .result-card:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .result-card .card-header {
+        padding: 1rem 1.5rem;
+        border-bottom: none;
+    }
+    
+    .result-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    /* 答案内容样式 */
+    .answer-content {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .answer-content pre {
+        background-color: #f1f3f5;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        white-space: pre-wrap;
+    }
+    
+    .answer-content .text-success {
+        font-weight: 600;
+        color: #28a745 !important;
+    }
+    
+    /* 历史记录样式 */
+    .history-item {
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+        border: 1px solid #eee;
+        transition: all 0.2s ease;
+    }
+    
+    .history-item:hover {
+        background-color: #f1f3f5;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    
+    .history-item pre {
+        background-color: #e9ecef;
+        border-radius: 6px;
+        padding: 0.5rem;
+        margin: 0.25rem 0;
+        font-size: 0.9rem;
+    }
+    
+    .history-item .text-success {
+        font-weight: 600;
+    }
+    
+    /* 标题样式 */
+    .page-title {
+        color: #0d6efd;
+        font-weight: 700;
+        margin-bottom: 2rem;
+        text-align: center;
+        position: relative;
+    }
+    
+    .page-title:after {
+        content: '';
+        display: block;
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(90deg, #007bff, #0056b3);
+        margin: 0.5rem auto 0;
+        border-radius: 2px;
+    }
+    
+    /* 动画效果 */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease forwards;
+    }
+    
+    /* 复制按钮样式 */
+    .copy-btn {
+        border-radius: 50px;
+        padding: 0.4rem 1rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+    
+    .copy-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .copy-btn i {
+        margin-right: 0.25rem;
+    }
+    
+    .nowrap {
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="search-container">
+        <h1 class="text-center mb-4 page-title">AI实时搜题</h1>
+        <div class="card mb-4 search-card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-search me-2"></i>输入题目信息</h5>
+            </div>
+            <div class="card-body">
+                <form id="aiSearchForm" onsubmit="return false;" class="needs-validation" novalidate>
+                    <div class="mb-4">
+                        <label for="aiQuestion" class="form-label fw-bold">题目内容</label>
+                        <div class="input-group has-validation">
+                            <span class="input-group-text"><i class="bi bi-pencil-square"></i></span>
+                            <textarea class="form-control" id="aiQuestion" name="title" placeholder="请输入题目内容" rows="3" required></textarea>
+                            <div class="invalid-feedback">请输入题目内容</div>
+                        </div>
+                        <small class="text-muted">提示：系统会自动识别题目中的选项</small>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="aiType" class="form-label fw-bold">题目类型</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-list-check"></i></span>
+                            <select class="form-select" id="aiType" name="type">
+                                <option value="">自动识别</option>
+                                <option value="single">单选题</option>
+                                <option value="multiple">多选题</option>
+                                <option value="judgement">判断题</option>
+                                <option value="completion">填空题</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="aiOptions" class="form-label fw-bold">选项（如有，换行分隔）</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-list-ul"></i></span>
+                            <textarea class="form-control" id="aiOptions" name="options" rows="3" placeholder="A. 选项1&#10;B. 选项2&#10;..."></textarea>
+                        </div>
+                        <small class="text-muted">格式示例：A. 选项1, B. 选项2, 每个选项一行</small>
+                    </div>
+                    
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="btn btn-search flex-grow-1" id="aiSearchBtn" type="submit">
+                            <i class="bi bi-search me-2"></i>AI搜题
+                        </button>
+                        <button class="btn btn-outline-secondary" id="resetFormBtn" type="button">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>重置
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="aiLoading" class="loading-container" style="display:none;">
+                    <div class="spinner-border text-primary loading-spinner" role="status">
+                        <span class="visually-hidden">AI搜题中...</span>
+                    </div>
+                    <div class="mt-3 text-muted">正在搜索题目答案，请稍候...</div>
+                </div>
+            </div>
+        </div>
+        <div id="aiResult" class="fade-in" style="display:none;">
+            <div class="card result-card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-check-circle-fill me-2"></i>AI答案</span>
+                    <button class="btn btn-light btn-sm copy-btn" id="copyAnswerBtn" title="复制答案"><i class="bi bi-clipboard"></i> 复制</button>
+                </div>
+                <div class="card-body">
+                    <div id="aiAnswerContent" class="answer-content"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="aiError" class="fade-in" style="display:none;">
+            <div class="alert alert-danger mt-3 d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span id="errorMessage"></span>
+            </div>
+        </div>
+        
+        <div id="aiHistory" class="fade-in" style="display:none;">
+            <div class="card mt-4 search-card">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-clock-history me-2"></i>本页AI搜题历史</span>
+                    <button class="btn btn-light btn-sm copy-btn nowrap" id="clearHistoryBtn" title="清空历史"><i class="bi bi-trash"></i> 清空</button>
+                </div>
+                <div class="card-body" id="aiHistoryList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+    // 初始化历史记录
+    let aiHistory = JSON.parse(localStorage.getItem('aiSearchHistory') || '[]');
+    
+    // 渲染历史记录
+    function renderHistory() {
+        const list = document.getElementById('aiHistoryList');
+        if (aiHistory.length === 0) {
+            document.getElementById('aiHistory').style.display = 'none';
+            return;
+        }
+        
+        // 显示历史记录卡片
+        document.getElementById('aiHistory').style.display = '';
+        
+        // 渲染历史记录列表
+        list.innerHTML = aiHistory.map((item, idx) => `
+            <div class="history-item" data-index="${idx}">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-1 text-primary"><i class="bi bi-question-circle me-2"></i>题目</h6>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary me-1 use-history-btn" data-index="${idx}" title="使用这个题目">
+                            <i class="bi bi-arrow-up-circle"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger delete-history-btn" data-index="${idx}" title="删除这条记录">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="mb-2">${item.question}</p>
+                <div class="d-flex mb-2">
+                    <span class="badge ${getTypeBadgeClass(item.type)} me-2">${getTypeDisplayName(item.type)}</span>
+                    <small class="text-muted ms-auto">${item.time}</small>
+                </div>
+                ${item.options ? `<div class="mb-2"><strong>选项：</strong><pre class="mb-1">${item.options}</pre></div>` : ''}
+                <div class="mt-2 p-2 bg-light rounded">
+                    <strong>答案：</strong><span class="text-success">${item.answer}</span>
+                </div>
+            </div>
+        `).join('');
+        
+        // 添加历史记录事件监听器
+        document.querySelectorAll('.use-history-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                useHistoryItem(index);
+            });
+        });
+        
+        document.querySelectorAll('.delete-history-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                deleteHistoryItem(index);
+            });
+        });
+    }
+    
+    // 获取题目类型显示名称
+    function getTypeDisplayName(type) {
+        switch(type) {
+            case 'single': return '单选题';
+            case 'multiple': return '多选题';
+            case 'judgement': return '判断题';
+            case 'completion': return '填空题';
+            default: return '自动识别';
+        }
+    }
+    
+    // 获取题目类型对应的标签类名
+    function getTypeBadgeClass(type) {
+        switch(type) {
+            case 'single': return 'bg-success';
+            case 'multiple': return 'bg-primary';
+            case 'judgement': return 'bg-warning';
+            case 'completion': return 'bg-info';
+            default: return 'bg-secondary';
+        }
+    }
+    
+    // 使用历史记录中的题目
+    function useHistoryItem(index) {
+        if (index >= 0 && index < aiHistory.length) {
+            const item = aiHistory[index];
+            document.getElementById('aiQuestion').value = item.question;
+            document.getElementById('aiType').value = item.type || '';
+            document.getElementById('aiOptions').value = item.options || '';
+            
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // 高亮表单
+            const form = document.getElementById('aiSearchForm');
+            form.classList.add('highlight-form');
+            setTimeout(() => form.classList.remove('highlight-form'), 1500);
+        }
+    }
+    
+    // 删除历史记录项
+    function deleteHistoryItem(index) {
+        if (index >= 0 && index < aiHistory.length) {
+            aiHistory.splice(index, 1);
+            saveHistory();
+            renderHistory();
+        }
+    }
+    
+    // 保存历史记录到本地存储
+    function saveHistory() {
+        localStorage.setItem('aiSearchHistory', JSON.stringify(aiHistory));
+    }
+    
+    // 自动提取选项
+    function autoExtractOptions() {
+        const questionInput = document.getElementById('aiQuestion');
+        const optionsInput = document.getElementById('aiOptions');
+        const typeSelect = document.getElementById('aiType');
+        let text = questionInput.value;
+        
+        // 如果题目为空，直接返回
+        if (!text.trim()) return;
+        
+        // 显示处理中的提示
+        showToast('正在分析题目...', 'info');
+        
+        // 匹配常见的选择题选项格式
+        // 支持A. B. C.  A、B、C、  A: B: 以及全角
+        const optionPattern = /([A-FＡ-Ｆ])[\.\u3001:\uff1a]\s*([^\n]+)/g;
+        let match, options = [], indices = [];
+        
+        while ((match = optionPattern.exec(text)) !== null) {
+            options.push(match[1] + '. ' + match[2].trim());
+            indices.push(match.index);
+        }
+        
+        if (options.length >= 2 && !optionsInput.value.trim()) {
+            // 自动填充选项
+            optionsInput.value = options.join('\n');
+            
+            // 移除题干中的选项部分，只保留题干
+            let firstOptIdx = indices[0];
+            questionInput.value = text.slice(0, firstOptIdx).trim();
+            
+            // 使用增强的自动识别题目类型功能
+            autoDetectQuestionType();
+            
+            // 如果自动识别失败，则使用简单的选项判断
+            if (typeSelect.value === '' || typeSelect.value === 'auto') {
+                // 如果选项中包含"正确"或"错误"，可能是判断题
+                const optionsText = options.join(' ').toLowerCase();
+                if (optionsText.includes('正确') && optionsText.includes('错误') && options.length === 2) {
+                    typeSelect.value = 'judgement';
+                } else if (question.includes('多选') || question.includes('多项')) {
+                    typeSelect.value = 'multiple';
+                } else {
+                    typeSelect.value = 'single';
+                }
+            }
+            
+            // 显示成功提示
+            showToast('已自动提取选项', 'success');
+        }
+    }
+    // 显示提示消息
+    function showToast(message, type = 'info') {
+        // 如果已经有toast，先移除
+        const existingToast = document.getElementById('aiToast');
+        if (existingToast) {
+            existingToast.remove();
+        }
+        
+        // 创建新的toast
+        const toast = document.createElement('div');
+        toast.id = 'aiToast';
+        toast.className = `toast-notification toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-icon">
+                <i class="bi ${type === 'success' ? 'bi-check-circle-fill' : type === 'error' ? 'bi-exclamation-circle-fill' : 'bi-info-circle-fill'}"></i>
+            </div>
+            <div class="toast-message">${message}</div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // 显示后自动消失
+        setTimeout(() => {
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }, 100);
+    }
+    
+    // 表单验证
+    function validateForm() {
+        const form = document.getElementById('aiSearchForm');
+        const questionInput = document.getElementById('aiQuestion');
+        
+        if (!questionInput.value.trim()) {
+            questionInput.classList.add('is-invalid');
+            return false;
+        }
+        
+        // 自动检测题目类型
+        autoDetectQuestionType();
+        
+        return true;
+    }
+    
+    // 自动识别题目类型
+    function autoDetectQuestionType() {
+        const question = document.getElementById('aiQuestion').value.trim();
+        const options = document.getElementById('aiOptions').value.trim();
+        const typeSelect = document.getElementById('aiType');
+        
+        // 如果用户已经选择了类型且不是空值，不覆盖
+        if (typeSelect.value !== '' && typeSelect.value !== 'auto') return;
+        
+        let detectedType = '';
+        
+        // 判断题特征
+        const judgementKeywords = ['判断', '对错', '是否', '正确', '错误', '对', '错', '√', '×', '对的', '错的', 'T', 'F', 'True', 'False'];
+        const hasJudgementKeyword = judgementKeywords.some(keyword => question.includes(keyword));
+        
+        // 选择题特征
+        const hasSingleChoicePattern = /[A-F][.、：:]\s*[^\n]+/g.test(question) || options.trim().length > 0;
+        
+        // 多选题特征
+        const multipleChoiceKeywords = [
+            '多选', '多项', '多个', '多种', '多项选择', '选出多个', 
+            '下列选项中', '以下选项中', '选出正确的选项', '选出正确的选项有',
+            '选出正确的是', '选择正确的选项有', '选择正确的有', '符合题意的有'
+        ];
+        const hasMultipleKeyword = multipleChoiceKeywords.some(keyword => question.includes(keyword));
+        
+        // 单选题特征
+        const singleChoiceKeywords = [
+            '单选', '选出唯一', '选出最佳', '选出最佳答案', '选出最佳选项',
+            '选出正确的一项', '选出正确的选项', '选择正确的一项', '选择正确的选项'
+        ];
+        const hasSingleKeyword = singleChoiceKeywords.some(keyword => question.includes(keyword));
+        
+        // 检测选项数量特征
+        const optionsCount = options ? options.split('\n').filter(line => line.trim()).length : 0;
+        const hasMultipleOptions = optionsCount >= 4; // 选项数量较多时可能是多选题
+        
+        // 检测选项内容特征
+        const optionsText = options || '';
+        const hasMultipleCorrectPattern = optionsText.includes('正确的有') || 
+                                       optionsText.includes('正确的是') || 
+                                       optionsText.includes('正确的有') || 
+                                       /[A-D][,，][A-D]/.test(optionsText) ||
+                                       /选择.*?多个/.test(question);
+        
+        // 填空题特征
+        const completionKeywords = ['填空', '补充', '填写', '填入', '补全'];
+        const hasCompletionKeyword = completionKeywords.some(keyword => question.includes(keyword));
+        
+        // 选择题中的括号模式，如“选择正确的选项()”
+        const choiceWithBracketPattern = /\([\s_]*\)|\uff08[\s_]*\uff09/.test(question) && /[A-D]/.test(question + options);
+        
+        // 检测句中括号和句尾括号
+        const hasMidBrackets = /[^\s\.\u3002\uff0c\,\;\uff1b]\s*[\(\uff08]\s*[\)\uff09]\s*[^\s\.\u3002\uff0c\,\;\uff1b]/.test(question);
+        const hasEndBrackets = /[^\s\.\u3002\uff0c\,\;\uff1b]\s*[\(\uff08]\s*[\)\uff09]\s*[\.\u3002\uff0c\,\;\uff1b\s]*$/.test(question);
+        
+        // 检测是否是完整陈述句（判断题特征）
+        const isCompleteStatement = /^[^\?\?？]+[\.\u3002]\s*[\(\uff08]\s*[\)\uff09]\s*$/.test(question.trim());
+        
+        // 检测是否是不完整句子（填空题特征）
+        const isIncompleteStatement = !isCompleteStatement && /[\(\uff08]\s*[\)\uff09]/.test(question);
+        
+        // 检测是否是“请填写”类型的提示语
+        const hasCompletionPrompt = /(请填写|请填空|请补充|请回答|请写出|请写出|请指出|请列举)/.test(question);
+        
+        // 填空题中的空白模式
+        const hasBlankPattern = /_{2,}|\.\.\.|…+|\[\s*\]/.test(question) || isIncompleteStatement;
+        
+        // 判断题特征 - 完整陈述句加句尾括号
+        const hasJudgementBracketPattern = isCompleteStatement && hasEndBrackets && !hasMidBrackets;
+        
+        // 基于句子结构判断题型
+        // 判断题通常是陈述句，以句号或句号加空格结尾
+        const isStatementSentence = /[^\?\?？][\.\u3002\uff0c\,\;\uff1b]\s*$/.test(question.trim()) || 
+                                  /[^\?\?？]\s*[\(\uff08]\s*[\)\uff09]\s*$/.test(question.trim());
+        // 填空题通常是问句或不完整句子
+        const isQuestionSentence = /[\?\?？]\s*$/.test(question.trim());
+        
+        // 判断是否是陈述某个观点的句子（典型的判断题特征）
+        const isOpinionStatement = /(认为|表明|说明|指出|描述|属于|就是|应该|必须|可以|不能|不应该)/.test(question);
+        
+        // 判断题目类型（优先级顺序调整）
+        if (options.trim().length > 0 || choiceWithBracketPattern) {
+            // 有选项或选择题括号模式时，优先判断为选择题
+            if (hasJudgementKeyword && (options.includes('正确') && options.includes('错误'))) {
+                detectedType = 'judgement';
+            } else if (hasMultipleKeyword || hasMultipleCorrectPattern || 
+                      (hasMultipleOptions && !hasSingleKeyword)) {
+                // 如果有多选关键词或多选模式，或者选项多且没有单选关键词
+                detectedType = 'multiple';
+            } else if (hasSingleKeyword || 
+                      (optionsCount > 0 && optionsCount <= 4 && !hasMultipleKeyword && !hasMultipleCorrectPattern)) {
+                // 如果有单选关键词或者选项数量适中且没有多选特征
+                detectedType = 'single';
+            } else {
+                // 默认为单选题
+                detectedType = 'single';
+            }
+        } else if (hasCompletionPrompt || hasCompletionKeyword || isIncompleteStatement || hasMidBrackets || isQuestionSentence) {
+            // 填空题提示语或关键词或不完整句子或句中括号或问句
+            detectedType = 'completion';
+        } else if (hasJudgementKeyword || (isCompleteStatement && hasEndBrackets) || (isStatementSentence && isOpinionStatement)) {
+            // 判断题关键词或完整陈述句加句尾括号或是陈述观点的陈述句
+            detectedType = 'judgement';
+        } else if (hasSingleChoicePattern) {
+            // 其他选择题特征
+            detectedType = 'single';
+        } else if (isStatementSentence) {
+            // 如果是陈述句但没有其他明显特征，则可能是判断题
+            detectedType = 'judgement';
+        } else {
+            // 默认为填空题
+            detectedType = 'completion';
+        }
+        
+        // 设置检测到的类型
+        if (detectedType) {
+            typeSelect.value = detectedType;
+            console.log(`自动识别题目类型: ${detectedType}`);
+        }
+    }
+    
+    // 实时输入验证
+    document.getElementById('aiQuestion').addEventListener('input', function() {
+        if (this.value.trim()) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        } else {
+            this.classList.remove('is-valid');
+            this.classList.add('is-invalid');
+        }
+        validateForm();
+    });
+    
+    // 题目输入框粘贴事件 - 自动识别题目类型和选项，但不自动搜题
+    document.getElementById('aiQuestion').addEventListener('paste', function(e) {
+        // 等待粘贴内容完成
+        setTimeout(function() {
+            const questionText = document.getElementById('aiQuestion').value.trim();
+            
+            // 如果粘贴的内容不为空且长度足够
+            if (questionText && questionText.length > 5) {
+                // 自动提取选项
+                autoExtractOptions();
+                // 自动识别题目类型
+                autoDetectQuestionType();
+                
+                // 显示提示
+                const type = document.getElementById('aiType').value;
+                let typeText = '';
+                if (type === 'single') typeText = '单选题';
+                else if (type === 'multiple') typeText = '多选题';
+                else if (type === 'judgement') typeText = '判断题';
+                else if (type === 'completion') typeText = '填空题';
+                else typeText = type;
+                
+                showToast(`已自动识别题目类型: ${typeText}`, 'info');
+                showToast('请点击搜索按钮进行搜题', 'info');
+            }
+        }, 100);
+    });
+    
+    // 失去焦点时自动提取选项
+    document.getElementById('aiQuestion').addEventListener('blur', autoExtractOptions);
+    
+    // 清空历史记录 - 直接清空不需要确认
+    document.getElementById('clearHistoryBtn').addEventListener('click', function() {
+        aiHistory = [];
+        saveHistory();
+        renderHistory();
+        showToast('历史记录已清空', 'success');
+    });
+    
+    // 搜题表单提交
+    document.getElementById('aiSearchForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // 验证表单
+        if (!validateForm()) {
+            showToast('请输入题目内容', 'error');
+            return;
+        }
+        
+        // 每次搜索前重置题目类型，确保重新识别
+        document.getElementById('aiType').value = '';
+        
+        // 自动提取选项
+        autoExtractOptions();
+        
+        // 确保题目类型被识别
+        autoDetectQuestionType();
+        
+        // 隐藏之前的结果
+        document.getElementById('aiResult').style.display = 'none';
+        document.getElementById('aiError').style.display = 'none';
+        document.getElementById('aiLoading').style.display = 'flex';
+        
+        // 更新按钮状态
+        const btn = document.getElementById('aiSearchBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>AI搜题中...';
+        
+        // 获取表单数据
+        const title = document.getElementById('aiQuestion').value.trim();
+        let type = document.getElementById('aiType').value;
+        const options = document.getElementById('aiOptions').value.trim();
+        
+        // 强制选项检测逻辑，确保有选项时识别为选择题
+        if (options.trim().length > 0) {
+            // 优先检查选项内容
+            if (options.includes('正确') && options.includes('错误') && options.split('\n').length <= 2) {
+                type = 'judgement';
+            } else if (title.includes('多选') || title.includes('多项') || 
+                      title.includes('多项选择') || title.includes('多选题')) {
+                type = 'multiple';
+            } else {
+                // 默认为单选题
+                type = 'single';
+            }
+        } else if (!type || type === 'auto') {
+            // 没有选项时的判断逻辑
+            if (title.includes('判断') || title.includes('对错') || 
+                title.includes('是否') || title.includes('正误')) {
+                type = 'judgement';
+            } else if (title.includes('填空') || title.includes('补充') || 
+                      title.includes('填写') || /_{2,}|\.\.\.|…+|\[\s*\]|（\s*）|\(\s*\)/g.test(title)) {
+                type = 'completion';
+            } else {
+                // 如果没有明显特征，默认为填空题
+                type = 'completion';
+            }
+        }
+        
+        // 设置题目类型并记录
+        document.getElementById('aiType').value = type;
+        console.log(`表单提交前设置题目类型: ${type}`);
+        
+        // 显示题目类型提示（避免Jinja2语法冲突）
+        let typeText = '';
+        if (type === 'single') typeText = '单选题';
+        else if (type === 'multiple') typeText = '多选题';
+        else if (type === 'judgement') typeText = '判断题';
+        else if (type === 'completion') typeText = '填空题';
+        else typeText = type;
+        
+        showToast(`题目类型: ${typeText}`, 'info');
+        
+        try {
+            // 发送请求
+            const resp = await fetch('/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, type, options })
+            });
+            
+            const data = await resp.json();
+            
+            if (data.code === 1) {
+                // 渲染答案
+                document.getElementById('aiAnswerContent').innerHTML = `
+                    <div class='mb-3'>
+                        <h6 class="text-primary mb-2"><i class="bi bi-question-circle me-2"></i>题目</h6>
+                        <p>${data.question}</p>
+                    </div>
+                    ${options ? `
+                    <div class='mb-3'>
+                        <h6 class="text-primary mb-2"><i class="bi bi-list-ul me-2"></i>选项</h6>
+                        <pre class='mb-1 p-2 bg-light rounded'>${options}</pre>
+                    </div>` : ''}
+                    <div class='mb-3'>
+                        <h6 class="text-success mb-2"><i class="bi bi-check-circle me-2"></i>答案</h6>
+                        <div class='p-3 bg-light rounded'>
+                            <span class='text-success fw-bold'>${data.answer}</span>
+                        </div>
+                    </div>
+                `;
+                
+                // 显示结果并添加动画
+                const resultElement = document.getElementById('aiResult');
+                resultElement.style.display = 'block';
+                resultElement.classList.add('fade-in');
+                
+                // 滚动到结果区域
+                setTimeout(() => {
+                    resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 300);
+                
+                // 保存历史
+                const historyItem = {
+                    question: data.question,
+                    type: type,
+                    options: options,
+                    answer: data.answer,
+                    time: new Date().toLocaleString()
+                };
+                
+                aiHistory.unshift(historyItem);
+                if (aiHistory.length > 20) aiHistory.length = 20; // 最多保存20条记录
+                saveHistory();
+                renderHistory();
+                
+                // 显示成功提示
+                showToast('搜题成功', 'success');
+            } else {
+                // 显示错误
+                document.getElementById('errorMessage').textContent = data.msg || 'AI未能返回答案';
+                document.getElementById('aiError').style.display = 'block';
+                document.getElementById('aiError').classList.add('fade-in');
+                showToast('搜题失败', 'error');
+            }
+        } catch (e) {
+            // 处理异常
+            document.getElementById('errorMessage').textContent = '请求失败，请重试';
+            document.getElementById('aiError').style.display = 'block';
+            document.getElementById('aiError').classList.add('fade-in');
+            showToast('网络错误', 'error');
+            console.error('AI搜题错误:', e);
+        } finally {
+            // 恢复按钮状态
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search me-2"></i>AI搜题';
+            document.getElementById('aiLoading').style.display = 'none';
+            
+            // 搜索完成后自动重置表单，为下一次搜索做准备
+            setTimeout(() => {
+                // 如果成功显示了结果，则重置表单
+                if (document.getElementById('aiResult').style.display !== 'none') {
+                    // 清空题目和选项
+                    document.getElementById('aiQuestion').value = '';
+                    document.getElementById('aiOptions').value = '';
+                    // 重置题目类型
+                    document.getElementById('aiType').value = '';
+                    // 移除验证状态类
+                    document.getElementById('aiQuestion').classList.remove('is-valid', 'is-invalid');
+                    // 聚焦到题目输入框
+                    document.getElementById('aiQuestion').focus();
+                }
+            }, 1000); // 等待1秒后重置，给用户时间查看结果
+        }
+    });
+    
+    // 复制答案按钮
+    document.getElementById('copyAnswerBtn').onclick = function() {
+        const answerText = document.getElementById('aiAnswerContent').innerText;
+        navigator.clipboard.writeText(answerText).then(() => {
+            // 更新按钮文本和图标
+            this.innerHTML = '<i class="bi bi-check-circle"></i> 已复制';
+            this.classList.add('btn-success');
+            this.classList.remove('btn-light');
+            
+            // 显示提示
+            showToast('答案已复制到剪贴板', 'success');
+            
+            // 恢复按钮状态
+            setTimeout(() => { 
+                this.innerHTML = '<i class="bi bi-clipboard"></i> 复制'; 
+                this.classList.remove('btn-success');
+                this.classList.add('btn-light');
+            }, 1500);
+        }).catch(err => {
+            showToast('复制失败: ' + err, 'error');
+        });
+    };
+    
+    // 页面加载完成后渲染历史记录
+    document.addEventListener('DOMContentLoaded', function() {
+        renderHistory();
+        
+        // 添加样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .toast-notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                display: flex;
+                align-items: center;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 9999;
+                transform: translateY(-20px);
+                opacity: 0;
+                transition: all 0.3s ease;
+                max-width: 350px;
+            }
+            
+            .toast-notification.show {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            
+            .toast-success {
+                background-color: #d4edda;
+                border-left: 4px solid #28a745;
+                color: #155724;
+            }
+            
+            .toast-error {
+                background-color: #f8d7da;
+                border-left: 4px solid #dc3545;
+                color: #721c24;
+            }
+            
+            .toast-info {
+                background-color: #d1ecf1;
+                border-left: 4px solid #17a2b8;
+                color: #0c5460;
+            }
+            
+            .toast-icon {
+                margin-right: 12px;
+                font-size: 1.25rem;
+            }
+            
+            .toast-message {
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+            
+            .highlight-form {
+                animation: highlight-pulse 1.5s ease;
+            }
+            
+            @keyframes highlight-pulse {
+                0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.5); }
+                70% { box-shadow: 0 0 0 10px rgba(13, 110, 253, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+            }
+        `;
+        document.head.appendChild(style);
+    });
+    
+    // 添加回车键提交表单的支持
+    document.getElementById('aiQuestion').addEventListener('keydown', function(e) {
+        // Ctrl+Enter 提交表单
+        if (e.ctrlKey && e.key === 'Enter') {
+            document.getElementById('aiSearchBtn').click();
+        }
+    });
+    
+    // 重置表单函数
+    function resetSearchForm() {
+        // 清空题目和选项
+        document.getElementById('aiQuestion').value = '';
+        document.getElementById('aiOptions').value = '';
+        
+        // 重置题目类型为自动识别
+        document.getElementById('aiType').value = '';
+        
+        // 移除验证状态类
+        document.getElementById('aiQuestion').classList.remove('is-valid', 'is-invalid');
+        
+        // 隐藏结果和错误区域
+        document.getElementById('aiResult').style.display = 'none';
+        document.getElementById('aiError').style.display = 'none';
+        
+        // 聚焦到题目输入框
+        document.getElementById('aiQuestion').focus();
+        
+        // 显示提示
+        showToast('表单已重置', 'info');
+    }
+    
+    // 重置按钮事件
+    document.getElementById('resetFormBtn').addEventListener('click', resetSearchForm);
+</script>
+{% endblock %} 

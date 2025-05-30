@@ -1,47 +1,46 @@
 {% extends 'base.html' %}
-{% block title %}EduBrain AI - 系统日志{% endblock %}
+{% block title %}系统日志 - AI题库服务{% endblock %}
 {% block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">系统日志</h5>
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>系统日志</h2>
+            <p>显示系统最近的运行日志</p>
                 </div>
-                <div class="card-body p-0">
-                    <div class="log-toolbar">
-                        <div>
-                            <button id="refreshBtn" class="btn btn-sm btn-primary">
-                                <i class="bi bi-arrow-clockwise"></i> 刷新日志
-                            </button>
-                            <button id="clearViewBtn" class="btn btn-sm btn-secondary">
-                                <i class="bi bi-x-circle"></i> 清空视图
-                            </button>
-                            <button id="downloadBtn" class="btn btn-sm btn-info">
-                                <i class="bi bi-download"></i> 下载日志
-                            </button>
+        <div class="col-md-4 text-end">
+            <button id="refreshBtn" class="btn btn-primary">
+                <i class="bi bi-arrow-clockwise"></i> 刷新日志
+            </button>
+            <div class="form-check form-switch d-inline-block ms-2">
+                <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                <label class="form-check-label" for="autoRefresh">自动刷新</label>
                         </div>
-                        <div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="showErrorCheck" checked>
-                                <label class="form-check-label" for="showErrorCheck">错误</label>
+            <select id="refreshInterval" class="form-select form-select-sm d-inline-block ms-2" style="width: auto;">
+                <option value="5000">5秒</option>
+                <option value="10000" selected>10秒</option>
+                <option value="30000">30秒</option>
+                <option value="60000">1分钟</option>
+            </select>
                             </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="showWarningCheck" checked>
-                                <label class="form-check-label" for="showWarningCheck">警告</label>
                             </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="showInfoCheck" checked>
-                                <label class="form-check-label" for="showInfoCheck">信息</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="showDebugCheck" checked>
-                                <label class="form-check-label" for="showDebugCheck">调试</label>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>日志内容</span>
+            <div>
+                <span id="lastRefresh" class="text-muted small me-2"></span>
+                <span id="refreshStatus" class="badge bg-success">自动刷新</span>
+                <button id="scrollToBottom" class="btn btn-sm btn-outline-secondary ms-2" title="滚动到底部">
+                    <i class="bi bi-arrow-down"></i>
+                </button>
+                <button id="clearLog" class="btn btn-sm btn-outline-danger ms-2" title="清空日志文件">
+                    <i class="bi bi-trash"></i> 清空日志
+                </button>
                             </div>
                         </div>
-                    </div>
-                    <div id="logView" class="log-container">{{ log_content|safe }}</div>
-                </div>
+        <div class="card-body p-0">
+            <div class="log-container bg-dark text-light p-3" style="height: 600px; overflow-y: auto; font-family: monospace; font-size: 0.9rem;">
+                <pre id="logContent">{{ log_content }}</pre>
             </div>
         </div>
     </div>
@@ -55,70 +54,140 @@
 </footer>
 {% endblock %}
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+{{ super() }}
 <script>
-$(document).ready(function() {
-    highlightLogs();
-    scrollToBottom();
-    
-    // 刷新按钮
-    $('#refreshBtn').click(function() { 
-        location.reload(); 
+    document.addEventListener('DOMContentLoaded', function() {
+        const logContent = document.getElementById('logContent');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const autoRefreshCheckbox = document.getElementById('autoRefresh');
+        const refreshIntervalSelect = document.getElementById('refreshInterval');
+        const lastRefresh = document.getElementById('lastRefresh');
+        const refreshStatus = document.getElementById('refreshStatus');
+        const scrollToBottomBtn = document.getElementById('scrollToBottom');
+        const clearLogBtn = document.getElementById('clearLog');
+        let refreshInterval = null;
+        
+        // 初始滚动到底部
+        const logContainer = document.querySelector('.log-container');
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // 更新最后刷新时间
+        function updateRefreshTime() {
+            const now = new Date();
+            lastRefresh.textContent = `最后刷新: ${now.toLocaleTimeString()}`;
+        }
+        updateRefreshTime();
+        
+        // 刷新日志内容
+        function refreshLogs() {
+            refreshStatus.textContent = '刷新中...';
+            refreshStatus.className = 'badge bg-info';
+            
+            fetch('/logs?ajax=1')
+                .then(response => response.text())
+                .then(html => {
+                    // 提取日志内容
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newLogContent = doc.getElementById('logContent').textContent;
+                    
+                    // 更新日志内容
+                    logContent.textContent = newLogContent;
+                    
+                    // 滚动到底部
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                    
+                    // 更新刷新时间和状态
+                    updateRefreshTime();
+                    refreshStatus.textContent = autoRefreshCheckbox.checked ? '自动刷新' : '手动刷新';
+                    refreshStatus.className = autoRefreshCheckbox.checked ? 'badge bg-success' : 'badge bg-secondary';
+                })
+                .catch(error => {
+                    console.error('刷新日志失败:', error);
+                    refreshStatus.textContent = '刷新失败';
+                    refreshStatus.className = 'badge bg-danger';
+                });
+        }
+        
+        // 点击刷新按钮
+        refreshBtn.addEventListener('click', refreshLogs);
+        
+        // 滚动到底部按钮
+        scrollToBottomBtn.addEventListener('click', function() {
+            logContainer.scrollTop = logContainer.scrollHeight;
+        });
+        
+        // 清空日志文件按钮
+        clearLogBtn.addEventListener('click', function() {
+            if (confirm('确定要清空日志文件吗？这将删除所有日志内容，但保留日志文件。')) {
+                // 显示加载状态
+                clearLogBtn.disabled = true;
+                clearLogBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 清空中...';
+                
+                // 调用API清空日志文件
+                fetch('/api/logs/clear', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 清空成功
+                        logContent.textContent = `--- ${data.message} ---\n--- 请刷新页面查看最新日志 ---`;
+                        alert(data.message);
+                    } else {
+                        // 清空失败
+                        alert(`清空失败: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('清空日志失败:', error);
+                    alert('清空日志失败，请检查网络连接或服务器状态');
+                })
+                .finally(() => {
+                    // 恢复按钮状态
+                    clearLogBtn.disabled = false;
+                    clearLogBtn.innerHTML = '<i class="bi bi-trash"></i> 清空日志';
+                });
+            }
+        });
+        
+        // 更新刷新间隔
+        function updateRefreshInterval() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            if (autoRefreshCheckbox.checked) {
+                const interval = parseInt(refreshIntervalSelect.value);
+                refreshInterval = setInterval(refreshLogs, interval);
+                refreshStatus.textContent = '自动刷新';
+                refreshStatus.className = 'badge bg-success';
+            }
+        }
+        
+        // 自动刷新切换
+        autoRefreshCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                updateRefreshInterval();
+            } else {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+                refreshStatus.textContent = '手动刷新';
+                refreshStatus.className = 'badge bg-secondary';
+            }
+        });
+        
+        // 刷新间隔变更
+        refreshIntervalSelect.addEventListener('change', updateRefreshInterval);
+        
+        // 初始启动自动刷新
+        updateRefreshInterval();
     });
-    
-    // 删除自动刷新功能，改为手动刷新
-    // setInterval(function() { location.reload(); }, 5000);
-    
-    // 清空视图按钮
-    $('#clearViewBtn').click(function() { 
-        $('#logView').empty(); 
-    });
-    
-    // 下载按钮
-    $('#downloadBtn').click(function() {
-        const logContent = $('#logView').text();
-        const blob = new Blob([logContent], { type: 'text/plain' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'ai_service_log_' + new Date().toISOString().slice(0, 10) + '.txt';
-        link.click();
-        URL.revokeObjectURL(link.href);
-    });
-    
-    // 过滤日志复选框
-    $('#showErrorCheck, #showWarningCheck, #showInfoCheck, #showDebugCheck').change(function() { 
-        filterLogs(); 
-    });
-});
-
-// 高亮不同级别的日志
-function highlightLogs() {
-    const logView = document.getElementById('logView');
-    let content = logView.innerHTML;
-    content = content.replace(/\b(ERROR)\b.*$/gm, '<span class="log-error">$&</span>');
-    content = content.replace(/\b(WARNING)\b.*$/gm, '<span class="log-warning">$&</span>');
-    content = content.replace(/\b(INFO)\b.*$/gm, '<span class="log-info">$&</span>');
-    content = content.replace(/\b(DEBUG)\b.*$/gm, '<span class="log-debug">$&</span>');
-    logView.innerHTML = content;
-}
-
-// 根据复选框状态过滤日志
-function filterLogs() {
-    const showError = $('#showErrorCheck').is(':checked');
-    const showWarning = $('#showWarningCheck').is(':checked');
-    const showInfo = $('#showInfoCheck').is(':checked');
-    const showDebug = $('#showDebugCheck').is(':checked');
-    
-    $('.log-error').toggle(showError);
-    $('.log-warning').toggle(showWarning);
-    $('.log-info').toggle(showInfo);
-    $('.log-debug').toggle(showDebug);
-}
-
-// 滚动到日志底部
-function scrollToBottom() {
-    const logView = document.getElementById('logView');
-    logView.scrollTop = logView.scrollHeight;
-}
 </script>
 {% endblock %} 

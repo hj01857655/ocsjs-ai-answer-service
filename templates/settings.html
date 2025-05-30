@@ -1,15 +1,200 @@
 {% extends 'base.html' %}
 {% block title %}EduBrain AI - 系统设置{% endblock %}
+
+{% block head %}
+<style>
+    /* 现代化设置页面样式 */
+    .settings-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: none;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .settings-card:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .settings-card .card-header {
+        border-bottom: none;
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .settings-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    /* 标签页样式 */
+    .nav-tabs {
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 1.5rem;
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        border-radius: 0;
+        color: #6c757d;
+        padding: 0.75rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-bottom-color: rgba(13, 110, 253, 0.3);
+        color: #0d6efd;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        background-color: transparent;
+    }
+    
+    /* 表单元素样式 */
+    .form-control, .form-select {
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        border: 1px solid #dee2e6;
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .form-control:disabled, .form-select:disabled,
+    .form-control[readonly], .form-select[readonly] {
+        background-color: #f8f9fa;
+        opacity: 0.8;
+    }
+    
+    /* 开关样式 */
+    .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+        margin-top: 0.25em;
+        vertical-align: top;
+        background-color: #fff;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        print-color-adjust: exact;
+        transition: background-color 0.15s ease-in-out, background-position 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    
+    .form-switch .form-check-input {
+        width: 3em;
+        margin-left: -2.5em;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280, 0, 0, 0.25%29'/%3e%3c/svg%3e");
+        background-position: left center;
+        border-radius: 2em;
+        transition: background-position 0.15s ease-in-out;
+    }
+    
+    .form-switch .form-check-input:checked {
+        background-position: right center;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+    }
+    
+    /* 按钮样式 */
+    .btn {
+        border-radius: 8px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        border: none;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #0069d9, #004494);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border: none;
+    }
+    
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #5a6268, #383d41);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(108, 117, 125, 0.3);
+    }
+    
+    /* 编辑模式指示器 */
+    .editing-indicator {
+        transition: all 0.3s ease;
+    }
+    
+    .badge.editing-indicator {
+        font-size: 0.75rem;
+        padding: 0.35em 0.65em;
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 0.8; }
+        50% { opacity: 1; }
+        100% { opacity: 0.8; }
+    }
+    
+    /* 标签页内容区域 */
+    .tab-content {
+        background-color: #fff;
+        border-radius: 0 0 15px 15px;
+    }
+    
+    .tab-pane {
+        padding: 1.5rem;
+    }
+    
+    /* 设置分组 */
+    .settings-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .settings-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    
+    .settings-section h5 {
+        color: #0d6efd;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="row">
         <div class="col-md-12">
-            <div class="card">
+            <div class="card settings-card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">系统设置</h5>
-                    <button id="editModeBtn" class="btn btn-sm btn-light">编辑</button>
+                    <div class="d-flex align-items-center">
+                        <h5 class="card-title mb-0">系统设置</h5>
+                        <span class="badge bg-warning text-dark ms-2 editing-indicator" style="display:none;">编辑中</span>
+                    </div>
+                    <button id="editModeBtn" class="btn btn-sm btn-light view-mode-btn">编辑</button>
                 </div>
                 <div class="card-body">
+                    <div class="alert alert-warning editing-indicator" style="display:none;">正在编辑设置，请保存或取消</div>
+                    
                     {% if success %}
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <strong>成功！</strong> {{ success }}
@@ -27,56 +212,94 @@
                     <form method="post" action="/settings" id="settingsForm">
                         <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="database-tab" data-bs-toggle="tab" data-bs-target="#database" type="button" role="tab">数据库配置</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="redis-tab" data-bs-toggle="tab" data-bs-target="#redis" type="button" role="tab">Redis配置</button>
+                                <button class="nav-link active" id="openai-tab" data-bs-toggle="tab" data-bs-target="#openai" type="button" role="tab">OpenAI配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="cache-tab" data-bs-toggle="tab" data-bs-target="#cache" type="button" role="tab">缓存配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="openai-tab" data-bs-toggle="tab" data-bs-target="#openai" type="button" role="tab">OpenAI配置</button>
+                                <button class="nav-link" id="database-tab" data-bs-toggle="tab" data-bs-target="#database" type="button" role="tab">数据库配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="other-tab" data-bs-toggle="tab" data-bs-target="#other" type="button" role="tab">其他设置</button>
+                                <button class="nav-link" id="redis-tab" data-bs-toggle="tab" data-bs-target="#redis" type="button" role="tab">Redis配置</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="record-tab" data-bs-toggle="tab" data-bs-target="#record" type="button" role="tab">记录配置</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="service-tab" data-bs-toggle="tab" data-bs-target="#service" type="button" role="tab">服务信息</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab">安全信息</button>
                             </li>
                         </ul>
                         
                         <div class="tab-content p-3 border border-top-0 rounded-bottom" id="settingsTabContent">
+                            <!-- OpenAI配置 -->
+                            <div class="tab-pane fade show active" id="openai" role="tabpanel" aria-labelledby="openai-tab">
+                                <h5 class="mb-3">OpenAI API配置</h5>
+                                <div class="mb-3">
+                                    <label for="openai_api_key" class="form-label">API密钥</label>
+                                    <input type="password" class="form-control" id="openai_api_key" name="openai_api_key" value="{{ config.openai.api_key }}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="openai_session" class="form-label">Session</label>
+                                    <input type="text" class="form-control" id="openai_session" name="openai_session" value="{{ config.openai.session }}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="openai_api_base" class="form-label">API基础URL</label>
+                                    <input type="text" class="form-control" id="openai_api_base" name="openai_api_base" value="{{ config.openai.api_base }}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="openai_model" class="form-label">默认模型</label>
+                                    <input type="text" class="form-control" id="openai_model" name="openai_model" value="{{ config.openai.model }}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="openai_models" class="form-label">可用模型列表</label>
+                                    <select class="form-select" id="openai_models" name="openai_models" multiple disabled>
+                                        {% for model in config.openai.models %}
+                                        <option value="{{ model }}" {% if model == config.openai.model %}selected{% endif %}>{{ model }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- 缓存配置 -->
+                            <div class="tab-pane fade" id="cache" role="tabpanel" aria-labelledby="cache-tab">
+                                <h5 class="mb-3">缓存配置</h5>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="cache_enable" name="cache_enable" {% if config.cache.enable %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="cache_enable">启用缓存</label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cache_expiration" class="form-label">缓存过期时间（秒）</label>
+                                    <input type="number" class="form-control" id="cache_expiration" name="cache_expiration" value="{{ config.cache.expiration }}" readonly>
+                                </div>
+                            </div>
+                            
                             <!-- 数据库配置 -->
-                            <div class="tab-pane fade show active" id="database" role="tabpanel" aria-labelledby="database-tab">
+                            <div class="tab-pane fade" id="database" role="tabpanel" aria-labelledby="database-tab">
                                 <h5 class="mb-3">MySQL数据库配置</h5>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label for="DB_TYPE" class="form-label">数据库类型</label>
-                                        <input type="text" class="form-control" id="DB_TYPE" name="DB_TYPE" value="{{ config.DB_TYPE }}" readonly>
-                                        <div class="form-text">支持的数据库类型，如mysql</div>
+                                        <label for="db_host" class="form-label">数据库主机</label>
+                                        <input type="text" class="form-control" id="db_host" name="db_host" value="{{ config.database.host }}" readonly>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="DB_HOST" class="form-label">数据库主机</label>
-                                        <input type="text" class="form-control" id="DB_HOST" name="DB_HOST" value="{{ config.DB_HOST }}" readonly>
-                                        <div class="form-text">数据库服务器地址，本地通常为localhost</div>
+                                        <label for="db_port" class="form-label">数据库端口</label>
+                                        <input type="number" class="form-control" id="db_port" name="db_port" value="{{ config.database.port }}" readonly>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="DB_PORT" class="form-label">数据库端口</label>
-                                        <input type="number" class="form-control" id="DB_PORT" name="DB_PORT" value="{{ config.DB_PORT }}" readonly>
-                                        <div class="form-text">MySQL默认端口为3306</div>
+                                        <label for="db_user" class="form-label">用户名</label>
+                                        <input type="text" class="form-control" id="db_user" name="db_user" value="{{ config.database.user }}" readonly>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="DB_NAME" class="form-label">数据库名</label>
-                                        <input type="text" class="form-control" id="DB_NAME" name="DB_NAME" value="{{ config.DB_NAME }}" readonly>
-                                        <div class="form-text">要连接的数据库名称</div>
+                                        <label for="db_password" class="form-label">密码</label>
+                                        <input type="password" class="form-control" id="db_password" name="db_password" value="{{ config.database.password }}" readonly>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="DB_USER" class="form-label">用户名</label>
-                                        <input type="text" class="form-control" id="DB_USER" name="DB_USER" value="{{ config.DB_USER }}" readonly>
-                                        <div class="form-text">数据库用户名</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="DB_PASSWORD" class="form-label">密码</label>
-                                        <input type="password" class="form-control" id="DB_PASSWORD" name="DB_PASSWORD" value="{{ config.DB_PASSWORD }}" readonly>
-                                        <div class="form-text">数据库密码</div>
+                                        <label for="db_name" class="form-label">数据库名</label>
+                                        <input type="text" class="form-control" id="db_name" name="db_name" value="{{ config.database.name }}" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -85,93 +308,72 @@
                             <div class="tab-pane fade" id="redis" role="tabpanel" aria-labelledby="redis-tab">
                                 <h5 class="mb-3">Redis服务配置</h5>
                                 <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" id="REDIS_ENABLED" name="REDIS_ENABLED" {% if config.REDIS_ENABLED %}checked{% endif %} disabled>
-                                    <label class="form-check-label" for="REDIS_ENABLED">启用Redis</label>
+                                    <input class="form-check-input" type="checkbox" id="redis_enabled" name="redis_enabled" {% if config.redis.enabled %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="redis_enabled">启用Redis</label>
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label for="REDIS_HOST" class="form-label">Redis主机</label>
-                                        <input type="text" class="form-control" id="REDIS_HOST" name="REDIS_HOST" value="{{ config.REDIS_HOST }}" readonly>
-                                        <div class="form-text">Redis服务器地址，本地通常为localhost</div>
+                                        <label for="redis_host" class="form-label">Redis主机</label>
+                                        <input type="text" class="form-control" id="redis_host" name="redis_host" value="{{ config.redis.host }}" readonly>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="REDIS_PORT" class="form-label">Redis端口</label>
-                                        <input type="number" class="form-control" id="REDIS_PORT" name="REDIS_PORT" value="{{ config.REDIS_PORT }}" readonly>
-                                        <div class="form-text">Redis默认端口为6379</div>
+                                        <label for="redis_port" class="form-label">Redis端口</label>
+                                        <input type="number" class="form-control" id="redis_port" name="redis_port" value="{{ config.redis.port }}" readonly>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="REDIS_PASSWORD" class="form-label">Redis密码</label>
-                                        <input type="password" class="form-control" id="REDIS_PASSWORD" name="REDIS_PASSWORD" value="{{ config.REDIS_PASSWORD }}" readonly>
-                                        <div class="form-text">Redis密码，如果没有设置可留空</div>
+                                        <label for="redis_password" class="form-label">Redis密码</label>
+                                        <input type="password" class="form-control" id="redis_password" name="redis_password" value="{{ config.redis.password }}" readonly>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="REDIS_DB" class="form-label">Redis数据库</label>
-                                        <input type="number" class="form-control" id="REDIS_DB" name="REDIS_DB" value="{{ config.REDIS_DB }}" readonly>
-                                        <div class="form-text">Redis数据库索引，默认为0</div>
+                                        <label for="redis_db" class="form-label">Redis数据库</label>
+                                        <input type="number" class="form-control" id="redis_db" name="redis_db" value="{{ config.redis.db }}" readonly>
                                     </div>
                                 </div>
                             </div>
                             
-                            <!-- 缓存配置 -->
-                            <div class="tab-pane fade" id="cache" role="tabpanel" aria-labelledby="cache-tab">
-                                <h5 class="mb-3">缓存配置</h5>
+                            <!-- 记录配置 -->
+                            <div class="tab-pane fade" id="record" role="tabpanel" aria-labelledby="record-tab">
+                                <h5 class="mb-3">记录配置</h5>
                                 <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" id="ENABLE_CACHE" name="ENABLE_CACHE" {% if config.ENABLE_CACHE %}checked{% endif %} disabled>
-                                    <label class="form-check-label" for="ENABLE_CACHE">启用缓存</label>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="CACHE_EXPIRATION" class="form-label">缓存过期时间（秒）</label>
-                                    <input type="number" class="form-control" id="CACHE_EXPIRATION" name="CACHE_EXPIRATION" value="{{ config.CACHE_EXPIRATION }}" readonly>
-                                    <div class="form-text">缓存的有效期，默认为2592000秒（30天）</div>
+                                    <input class="form-check-input" type="checkbox" id="record_enable" name="record_enable" {% if config.record.enable %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="record_enable">启用记录</label>
                                 </div>
                             </div>
                             
-                            <!-- OpenAI配置 -->
-                            <div class="tab-pane fade" id="openai" role="tabpanel" aria-labelledby="openai-tab">
-                                <h5 class="mb-3">OpenAI API配置</h5>
+                            <!-- 服务信息（只读） -->
+                            <div class="tab-pane fade" id="service" role="tabpanel" aria-labelledby="service-tab">
+                                <h5 class="mb-3">服务信息</h5>
                                 <div class="mb-3">
-                                    <label for="OPENAI_API_KEY" class="form-label">API密钥</label>
-                                    <input type="password" class="form-control" id="OPENAI_API_KEY" name="OPENAI_API_KEY" value="{{ config.OPENAI_API_KEY }}" readonly>
-                                    <div class="form-text">OpenAI API密钥，请妥善保管</div>
+                                    <label class="form-label">服务主机</label>
+                                    <input type="text" class="form-control" value="{{ config.service.host }}" readonly>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="OPENAI_MODEL" class="form-label">模型</label>
-                                    <input type="text" class="form-control" id="OPENAI_MODEL" name="OPENAI_MODEL" value="{{ config.OPENAI_MODEL }}" readonly>
-                                    <div class="form-text">要使用的OpenAI模型，如gpt-3.5-turbo、gpt-4等</div>
+                                    <label class="form-label">服务端口</label>
+                                    <input type="number" class="form-control" value="{{ config.service.port }}" readonly>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="OPENAI_API_BASE" class="form-label">API基础URL</label>
-                                    <input type="text" class="form-control" id="OPENAI_API_BASE" name="OPENAI_API_BASE" value="{{ config.OPENAI_API_BASE }}" readonly>
-                                    <div class="form-text">OpenAI API的基础URL，默认为https://api.openai.com/v1</div>
+                                    <label class="form-label">Debug模式</label>
+                                    <input type="text" class="form-control" value="{{ config.service.debug }}" readonly>
                                 </div>
                             </div>
                             
-                            <!-- 其他设置 -->
-                            <div class="tab-pane fade" id="other" role="tabpanel" aria-labelledby="other-tab">
-                                <h5 class="mb-3">其他系统设置</h5>
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label for="MAX_TOKENS" class="form-label">最大令牌数</label>
-                                        <input type="number" class="form-control" id="MAX_TOKENS" name="MAX_TOKENS" value="{{ config.MAX_TOKENS }}" readonly>
-                                        <div class="form-text">每次API请求的最大令牌数</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="TEMPERATURE" class="form-label">温度</label>
-                                        <input type="number" step="0.1" class="form-control" id="TEMPERATURE" name="TEMPERATURE" value="{{ config.TEMPERATURE }}" readonly>
-                                        <div class="form-text">控制生成文本的随机性，0-1之间的值</div>
-                                    </div>
+                            <!-- 安全信息（只读） -->
+                            <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
+                                <h5 class="mb-3">安全信息</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">Secret Key</label>
+                                    <input type="text" class="form-control" value="{{ config.security.secret_key }}" readonly>
                                 </div>
-                                <div class="mt-3">
-                                    <label for="SSL_CERT_FILE" class="form-label">SSL证书路径</label>
-                                    <input type="text" class="form-control" id="SSL_CERT_FILE" name="SSL_CERT_FILE" value="{{ config.SSL_CERT_FILE }}" readonly>
-                                    <div class="form-text">SSL证书文件的路径，Windows通常为Git安装目录下的ca-bundle.crt</div>
+                                <div class="mb-3">
+                                    <label class="form-label">Access Token</label>
+                                    <input type="text" class="form-control" value="{{ config.security.access_token }}" readonly>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="mt-4 text-center edit-mode">
-                            <button type="submit" class="btn btn-primary">保存设置</button>
-                            <button type="button" id="cancelEditBtn" class="btn btn-secondary ms-2">取消编辑</button>
+                            <button type="submit" class="btn btn-primary edit-mode-btn" style="display:none;">保存设置</button>
+                            <button type="button" id="cancelEditBtn" class="btn btn-secondary ms-2 edit-mode-btn" style="display:none;">取消编辑</button>
                         </div>
                     </form>
                 </div>
@@ -179,4 +381,157 @@
         </div>
     </div>
 </div>
+<script>
+{{ super() }}
+// 加载动画
+let loadingOverlay;
+
+// 显示加载动画
+function showLoading() {
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'loadingOverlay';
+        loadingOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 9999; display: flex; justify-content: center; align-items: center;';
+        
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner-border text-light';
+        spinner.style.cssText = 'width: 3rem; height: 3rem;';
+        spinner.setAttribute('role', 'status');
+        
+        const srOnly = document.createElement('span');
+        srOnly.className = 'visually-hidden';
+        srOnly.textContent = '加载中...';
+        
+        spinner.appendChild(srOnly);
+        loadingOverlay.appendChild(spinner);
+        document.body.appendChild(loadingOverlay);
+    } else {
+        loadingOverlay.style.display = 'flex';
+    }
+}
+
+// 隐藏加载动画
+function hideLoading() {
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+    }
+}
+
+// 编辑模式切换逻辑
+const editBtn = document.getElementById('editModeBtn');
+const cancelBtn = document.getElementById('cancelEditBtn');
+const editModeIndicators = document.querySelectorAll('.editing-indicator');
+const editModeBtns = document.querySelectorAll('.edit-mode-btn');
+const form = document.getElementById('settingsForm');
+
+// 设置编辑模式
+function setEditMode(edit) {
+    // 显示/隐藏编辑模式指示器
+    editModeIndicators.forEach(el => {
+        if (edit) {
+            el.style.display = 'block';
+            // 添加渐变动画
+            setTimeout(() => el.style.opacity = '1', 10);
+        } else {
+            el.style.opacity = '0';
+            setTimeout(() => el.style.display = 'none', 300);
+        }
+    });
+    
+    // 显示/隐藏编辑模式按钮
+    editModeBtns.forEach(btn => {
+        if (btn.classList.contains('view-mode-btn')) {
+            if (edit) {
+                btn.style.opacity = '0';
+                setTimeout(() => btn.style.display = 'none', 300);
+            } else {
+                btn.style.display = 'block';
+                setTimeout(() => btn.style.opacity = '1', 10);
+            }
+        } else {
+            if (edit) {
+                btn.style.display = 'inline-block';
+                setTimeout(() => btn.style.opacity = '1', 10);
+            } else {
+                btn.style.opacity = '0';
+                setTimeout(() => btn.style.display = 'none', 300);
+            }
+        }
+    });
+    
+    // 设置表单元素的只读属性
+    const formElements = form.querySelectorAll('input, select, textarea');
+    formElements.forEach(el => {
+        if (el.type === 'checkbox' || el.type === 'radio') {
+            el.disabled = !edit;
+        } else {
+            el.readOnly = !edit;
+            if (el.tagName === 'SELECT') {
+                el.disabled = !edit;
+            }
+        }
+        
+        // 添加视觉反馈
+        if (edit) {
+            el.classList.add('editable');
+            // 添加输入事件监听器
+            el.addEventListener('input', validateInput);
+        } else {
+            el.classList.remove('editable');
+            el.classList.remove('is-valid');
+            el.classList.remove('is-invalid');
+            // 移除输入事件监听器
+            el.removeEventListener('input', validateInput);
+        }
+    });
+    
+    // 编辑模式下添加表单验证
+    if (edit) {
+        form.classList.add('needs-validation');
+    } else {
+        form.classList.remove('needs-validation');
+        form.classList.remove('was-validated');
+    }
+    
+    // 添加动画效果
+    const tabContent = document.getElementById('settingsTabContent');
+    if (tabContent) {
+        tabContent.style.transition = 'all 0.3s ease';
+        tabContent.style.opacity = '0.7';
+        setTimeout(() => {
+            tabContent.style.opacity = '1';
+        }, 300);
+    }
+}
+
+// 输入验证
+function validateInput(e) {
+    const input = e.target;
+    if (input.required && input.value.trim() === '') {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+    } else {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+    }
+}
+
+// 进入编辑模式
+if (editBtn) editBtn.addEventListener('click', function() { setEditMode(true); });
+// 取消编辑
+if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+        setEditMode(false);
+        form.reset();
+    });
+}
+// 页面加载后强制只读
+setEditMode(false);
+</script>
+<style>
+.card.editing {
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 0 0 2px #ffe082;
+}
+</style>
 {% endblock %} 

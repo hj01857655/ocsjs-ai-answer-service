@@ -1,91 +1,255 @@
-{% extends 'base.html' %}
-{% block title %}EduBrain AI - 注册{% endblock %}
-{% block content %}
-<div class="container register-container mt-5">
-    <div class="card register-card">
-        <div class="register-header">
-            <div class="brand-logo"><i class="bi bi-brain"></i></div>
-            <h4>EduBrain AI</h4>
-            <p class="mb-0">创建新账号</p>
-        </div>
-        <div class="register-body">
-            {% if error %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ error }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduBrain AI - 注册</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #007bff, #6610f2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+        .register-container {
+            max-width: 500px;
+            width: 100%;
+        }
+        .register-card {
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .register-header {
+            background: #fff;
+            padding: 2rem 1.5rem 1rem 1.5rem;
+            text-align: center;
+        }
+        .brand-logo {
+            font-size: 2.5rem;
+            color: #007bff;
+            margin-bottom: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .register-body {
+            background: #f8f9fa;
+            padding: 2rem 1.5rem 1.5rem 1.5rem;
+        }
+        .register-footer {
+            background: #fff;
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.95rem;
+            color: #888;
+        }
+        .form-control:focus, .btn:focus {
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            border-color: #86b7fe;
+        }
+        .password-strength {
+            height: 5px;
+            border-radius: 5px;
+            margin-top: 8px;
+            transition: all 0.3s ease;
+        }
+        .strength-weak {
+            background-color: #dc3545;
+            width: 30%;
+        }
+        .strength-medium {
+            background-color: #ffc107;
+            width: 60%;
+        }
+        .strength-strong {
+            background-color: #28a745;
+            width: 100%;
+        }
+        .back-to-home {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .back-to-home:hover {
+            transform: translateX(-5px);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-to-home">
+        <i class="bi bi-arrow-left me-2"></i> 返回首页
+    </a>
+
+    <div class="container register-container">
+        <div class="card register-card">
+            <div class="register-header">
+                <div class="brand-logo"><i class="bi bi-brain"></i></div>
+                <h4>EduBrain AI</h4>
+                <p class="mb-0">创建新账号</p>
             </div>
-            {% endif %}
-            
-            <form method="POST" action="{{ url_for('register') }}" id="registerForm">
-                <div class="mb-3">
-                    <label for="username" class="form-label">用户名</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-person"></i></span>
-                        <input type="text" class="form-control" id="username" name="username" placeholder="至少3个字符" required minlength="3">
-                    </div>
-                    <div class="form-text">用户名将用于登录，必须至少3个字符</div>
+            <div class="register-body">
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
+                {% endif %}
                 
-                <div class="mb-3">
-                    <label for="email" class="form-label">邮箱 (可选)</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                        <input type="email" class="form-control" id="email" name="email" placeholder="user@example.com">
+                <form method="POST" action="{{ url_for('register') }}" id="registerForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" placeholder="至少3个字符" required minlength="3">
+                        </div>
+                        <div class="form-text">用户名将用于登录，必须至少3个字符</div>
                     </div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="password" class="form-label">密码</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                        <input type="password" class="form-control" id="password" name="password" placeholder="至少6个字符" required minlength="6">
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">邮箱 (可选)</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="user@example.com">
+                        </div>
                     </div>
-                    <div class="form-text">密码必须至少6个字符</div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="confirm_password" class="form-label">确认密码</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="重复输入密码" required minlength="6">
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">密码</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="至少6个字符" required minlength="6">
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-strength" id="passwordStrength"></div>
+                        <div class="form-text" id="passwordFeedback">密码必须至少6个字符</div>
                     </div>
-                </div>
+                    
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">确认密码</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="重复输入密码" required minlength="6">
+                            <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text" id="confirmFeedback"></div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">创建账号</button>
+                    </div>
+                </form>
                 
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-success">注册</button>
+                <div class="mt-4 text-center">
+                    <p>已有账号？ <a href="{{ url_for('auth.login') }}" class="text-decoration-none">登录</a></p>
                 </div>
-            </form>
-            
-            <div class="mt-4 text-center">
-                <p>已有账号？ <a href="{{ url_for('login') }}" class="text-decoration-none">登录</a></p>
             </div>
-        </div>
-        <div class="register-footer">
-            <p class="mb-0">EduBrain AI &copy; {{ current_year }} 版权所有</p>
+            <div class="register-footer">
+                <p class="mb-0">EduBrain AI &copy; {{ current_year|default(2025) }} 版权所有</p>
+            </div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('registerForm');
-        const password = document.getElementById('password');
-        const confirmPassword = document.getElementById('confirm_password');
-        
-        // 添加当前年份到模板
-        const yearElements = document.querySelectorAll('.current-year');
-        const currentYear = new Date().getFullYear();
-        yearElements.forEach(element => {
-            element.textContent = currentYear;
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('registerForm');
+            const password = document.getElementById('password');
+            const confirmPassword = document.getElementById('confirm_password');
+            const passwordStrength = document.getElementById('passwordStrength');
+            const passwordFeedback = document.getElementById('passwordFeedback');
+            const confirmFeedback = document.getElementById('confirmFeedback');
+            const togglePassword = document.getElementById('togglePassword');
+            const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+            
+            // 切换密码可见性
+            togglePassword.addEventListener('click', function() {
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+                this.querySelector('i').classList.toggle('bi-eye');
+                this.querySelector('i').classList.toggle('bi-eye-slash');
+            });
+            
+            toggleConfirmPassword.addEventListener('click', function() {
+                const type = confirmPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+                confirmPassword.setAttribute('type', type);
+                this.querySelector('i').classList.toggle('bi-eye');
+                this.querySelector('i').classList.toggle('bi-eye-slash');
+            });
+            
+            // 密码强度检测
+            password.addEventListener('input', function() {
+                const val = this.value;
+                let strength = 0;
+                
+                if (val.length >= 6) strength += 1;
+                if (val.length >= 10) strength += 1;
+                if (/[A-Z]/.test(val)) strength += 1;
+                if (/[0-9]/.test(val)) strength += 1;
+                if (/[^A-Za-z0-9]/.test(val)) strength += 1;
+                
+                passwordStrength.className = 'password-strength';
+                
+                if (val.length === 0) {
+                    passwordStrength.style.width = '0';
+                    passwordFeedback.textContent = '密码必须至少6个字符';
+                } else if (strength < 3) {
+                    passwordStrength.classList.add('strength-weak');
+                    passwordFeedback.textContent = '密码强度：弱';
+                } else if (strength < 5) {
+                    passwordStrength.classList.add('strength-medium');
+                    passwordFeedback.textContent = '密码强度：中';
+                } else {
+                    passwordStrength.classList.add('strength-strong');
+                    passwordFeedback.textContent = '密码强度：强';
+                }
+            });
+            
+            // 确认密码匹配检测
+            confirmPassword.addEventListener('input', function() {
+                if (this.value.length > 0) {
+                    if (this.value === password.value) {
+                        confirmFeedback.textContent = '密码匹配';
+                        confirmFeedback.style.color = '#28a745';
+                    } else {
+                        confirmFeedback.textContent = '密码不匹配';
+                        confirmFeedback.style.color = '#dc3545';
+                    }
+                } else {
+                    confirmFeedback.textContent = '';
+                }
+            });
+            
+            // 表单提交验证
+            form.addEventListener('submit', function(event) {
+                if (password.value !== confirmPassword.value) {
+                    event.preventDefault();
+                    confirmFeedback.textContent = '两次输入的密码不一致';
+                    confirmFeedback.style.color = '#dc3545';
+                    confirmPassword.focus();
+                }
+            });
         });
-        
-        // 验证密码匹配
-        form.addEventListener('submit', function(event) {
-            if (password.value !== confirmPassword.value) {
-                alert('两次输入的密码不一致');
-                event.preventDefault();
-            }
-        });
-    });
-</script> 
+    </script>
+</body>
+</html>
