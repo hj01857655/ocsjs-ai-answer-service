@@ -3,6 +3,7 @@ import os
 from flask import Blueprint, render_template, request, session, redirect
 from datetime import datetime
 from functools import wraps
+from config.model_providers import provider_manager, load_providers_from_file
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
 
@@ -49,6 +50,10 @@ def settings():
         'redis': config.get('redis', {}),
         'record': config.get('record', {}),
         'security': config.get('security', {}),
+        
+        # 获取模型供应商信息
+        'model_providers': [],
+        'default_provider': ''
     }
     if request.method == 'POST':
         try:
@@ -87,7 +92,61 @@ def settings():
             record['enable'] = request.form.get('record_enable') == 'on'
             config['record'] = record
             save_config(config)
-            return render_template('settings.html', success="配置已成功更新！", config=current_config, current_year=current_year)
+            success = request.args.get('success', False)
+            message = request.args.get('message', '')
+            
+            # 获取模型供应商信息
+            providers = provider_manager.get_all_providers()
+            model_providers = []
+            for provider in providers:
+                model_providers.append({
+                    'provider_id': provider.provider_id,
+                    'name': provider.name,
+                    'api_key': provider.api_key,
+                    'api_base': provider.api_base,
+                    'models': provider.models,
+                    'default_model': provider.default_model,
+                    'is_active': provider.is_active,
+                    'parameters': provider.parameters
+                })
+            default_provider = provider_manager.get_default_provider_id()
+            
+            return render_template('settings.html', 
+                                   config=current_config,
+                                   model_providers=model_providers,
+                                   default_provider=default_provider,
+                                   current_year=current_year, 
+                                   success=success, 
+                                   message=message)
         except Exception as e:
             return render_template('settings.html', error=f"更新配置失败: {str(e)}", config=current_config, current_year=current_year)
-    return render_template('settings.html', config=current_config, current_year=current_year) 
+    success = request.args.get('success', False)
+    message = request.args.get('message', '')
+    
+    # 获取模型供应商信息
+    providers = provider_manager.get_all_providers()
+    model_providers = []
+    for provider in providers:
+        # 确保provider_id是字符串
+        provider_id = str(provider.provider_id) if provider.provider_id is not None else ''
+        model_providers.append({
+            'provider_id': provider_id,
+            'name': provider.name,
+            'api_key': provider.api_key,
+            'api_base': provider.api_base,
+            'models': provider.models,
+            'default_model': provider.default_model,
+            'is_active': provider.is_active,
+            'parameters': provider.parameters
+        })
+    default_provider = provider_manager.get_default_provider_id()
+    # 确保default_provider是字符串
+    default_provider = str(default_provider) if default_provider is not None else ''
+    
+    return render_template('settings.html', 
+                           config=current_config,
+                           model_providers=model_providers,
+                           default_provider=default_provider,
+                           current_year=current_year, 
+                           success=success, 
+                           message=message)

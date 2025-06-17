@@ -10,25 +10,28 @@ import os
 import json
 import time
 import logging
-import openai
 from datetime import datetime
 import functools
-import httpx
 import random
+import shutil
 
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from flask_cors import CORS
 from config import Config
 from utils import format_answer_for_ocs, parse_question_and_options, extract_answer
 from models import QARecord, UserSession, get_db_session, close_db_session, get_user_by_id
-from cache import RedisCache
-import key_switcher
+from services import RedisCache
+from services import key_switcher
+from config.model_providers import provider_manager, load_providers_from_file, initialize_default_providers, save_providers_to_file
+from services.model_service import SyncModelService
 from routes.auth import auth_bp
 from routes.token import token_bp
 from routes.questions import questions_bp
 from routes.settings import settings_bp
 from routes.logs import logs_bp
-from token_sync import sync_tokens_to_config
+from routes.image_proxy import register_image_proxy_bp
+from routes.provider import provider_bp
+from services import sync_tokens_to_config
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # 配置日志系统
@@ -211,33 +214,79 @@ def init_redis_cache():
 # 应用启动时初始化Redis
 init_redis_cache()
 
+# 初始化模型供应商配置
+def initialize_model_providers():
+    # 检查模型供应商配置文件是否存在
+    if os.path.exists(Config.MODEL_PROVIDERS_FILE):
+        # 加载现有配置
+        logging.info(f"从文件加载模型供应商配置: {Config.MODEL_PROVIDERS_FILE}")
+        load_providers_from_file(Config.MODEL_PROVIDERS_FILE)
+    else:
+        # 创建默认配置
+        logging.info("创建默认模型供应商配置")
+        initialize_default_providers()
+        
+        # 检查配置目录是否存在
+        config_dir = os.path.dirname(Config.MODEL_PROVIDERS_FILE)
+        if not os.path.exists(config_dir):
+            os.makedirs(config_dir)
+        
+        # 保存默认配置
+        save_providers_to_file(Config.MODEL_PROVIDERS_FILE)
+        
+        # 如果有示例文件，复制一份作为参考
+        example_file = f"{Config.MODEL_PROVIDERS_FILE}.example"
+        if os.path.exists(example_file):
+            target_example = f"{Config.MODEL_PROVIDERS_FILE}.example.reference"
+            shutil.copy2(example_file, target_example)
+            logging.info(f"已复制示例配置文件到: {target_example}")
+    
+    # 检查是否有可用的供应商
+    active_providers = provider_manager.get_active_providers()
+    if not active_providers:
+        logging.warning("没有找到可用的模型供应商，将使用默认配置")
+        initialize_default_providers()
+    else:
+        logging.info(f"找到 {len(active_providers)} 个可用的模型供应商")
+        for provider in active_providers:
+            logging.info(f"  - {provider.name} ({provider.provider_id}): {provider.default_model}")
+
 # 验证OpenAI API密钥
-if not Config.OPENAI_API_KEY:
-    logger.critical("未设置OpenAI API密钥，请在config.json文件中配置openai.api_key")
-    raise ValueError("请设置OpenAI API密钥")
+def validate_openai_key():
+    try:
+        if Config.OPENAI_API_KEY:
+            import httpx
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {Config.OPENAI_API_KEY}"
+            }
+            payload = {
+                "model": Config.OPENAI_MODEL,
+                "messages": [{"role": "user", "content": "Hello"}],
+                "max_tokens": 5
+            }
+            with httpx.Client(verify=False) as client:
+                response = client.post(
+                    f"{Config.OPENAI_API_BASE}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=10.0
+                )
+                response.raise_for_status()
+                logging.info(f"OpenAI API密钥验证成功")
+                return True
+        else:
+            logging.warning("OpenAI API密钥未配置")
+            return False
+    except Exception as e:
+        logging.error(f"OpenAI API密钥验证失败: {str(e)}")
+        return False
 
-# 确保API基础URL格式正确
-api_base = Config.OPENAI_API_BASE
-if not api_base.endswith('/'):
-    api_base += '/'
+# 初始化模型供应商配置
+initialize_model_providers()
 
-# 初始化OpenAI客户端
-try:
-    client = openai.OpenAI(
-        api_key=Config.OPENAI_API_KEY,
-        base_url=api_base,
-        http_client=httpx.Client(
-            verify=False,  # 禁用SSL验证
-            timeout=60.0   # 增加超时时间
-        )
-    )
-    logger.info(f"OpenAI客户端初始化成功，API基础URL: {api_base}")
-except Exception as e:
-    logger.critical(f"OpenAI客户端初始化失败: {str(e)}")
-    raise
-
-# 应用启动时间
-start_time = time.time()
+# 验证OpenAI API密钥
+validate_openai_key()
 
 # --- 简单内存IP限流装饰器 ---
 ip_access = {}
@@ -330,140 +379,63 @@ def search():
                 logger.info(f"从缓存获取答案 (耗时: {time.time() - start_time:.2f}秒)")
                 return jsonify(format_answer_for_ocs(question, cached_answer))
         
-        # 获取模型参数，优先用前端传入的 model，否则用默认
+        # 获取模型参数，优先用前端传入的参数，否则用默认
+        provider_id = request.json.get('provider_id') if request.is_json else request.args.get('provider_id')
         model = request.json.get('model') if request.is_json else request.args.get('model')
-        models = Config.OPENAI_MODELS.copy()
-        if not model:
-            model = Config.OPENAI_MODEL
-        if model not in models:
-            models.insert(0, model)
-        model_index = 0
         
-        # 构建发送给OpenAI的提示
-        prompt = parse_question_and_options(question, options, question_type)
-        
-        # 请求OpenAI API，支持自动重试和密钥轮换
+        # 构建基础提示
+        base_prompt = parse_question_and_options(question, options, question_type)
+
+        # 构建完整的提示，包含系统提示
+        system_prompt = "你是一个专业的考试答题助手。请直接回答答案，不要解释。选择题只回答选项的内容(如：地球)；多选题用#号分隔答案,只回答选项的内容(如中国#世界#地球)；判断题只回答: 正确/对/true/√ 或 错误/错/false/×；填空题直接给出答案。"
+
+        # 将系统提示和用户提示合并
+        full_prompt = f"{system_prompt}\n\n{base_prompt}"
+
+        # 使用ModelService生成答案
         max_retries = 3
         retry_count = 0
         ai_answer = ""
-        
+
+        # 模型参数
+        parameters = {
+            "temperature": Config.TEMPERATURE,
+            "max_tokens": Config.MAX_TOKENS
+        }
+
         while retry_count < max_retries:
             try:
-                # --- 优化：严格适配代理API的fetch请求格式和流式响应 ---
-                headers = {
-                    "accept": "application/json",
-                    "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-                    "authorization": f"Bearer {Config.OPENAI_API_KEY}",
-                    "content-type": "application/json",
-                }
-                # 构造body，严格仿照fetch格式
-                data = {
-                    "messages": [
-                        {"role": "system", "content": "你是一个专业的考试答题助手。请直接回答答案，不要解释。选择题只回答选项的内容(如：地球)；多选题用#号分隔答案,只回答选项的内容(如中国#世界#地球)；判断题只回答: 正确/对/true/√ 或 错误/错/false/×；填空题直接给出答案。"},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "stream": False,
-                    "model": model,
-                    "temperature": Config.TEMPERATURE,
-                    "presence_penalty": 0,
-                    "frequency_penalty": 0,
-                    "top_p": 1,
-                    "max_tokens": Config.MAX_TOKENS
-                }
-                
-                # 发送API请求
-                resp = httpx.post(
-                    f"{Config.OPENAI_API_BASE.rstrip('/')}/v1/chat/completions",
-                    headers=headers,
-                    json=data,
-                    timeout=60.0,
-                    verify=False
+                # 使用SyncModelService生成答案
+                response = SyncModelService.generate_response(
+                    prompt=full_prompt,
+                    provider_id=provider_id,  # 如果为None，则使用默认供应商
+                    model=model,  # 如果为None，则使用供应商的默认模型
+                    parameters=parameters
                 )
                 
-                # 处理响应
-                if resp.status_code == 200:
-                    # 先尝试直接解析完整的JSON响应
-                    try:
-                        full_response = resp.json()
-                        content = full_response.get("choices", [{}])[0].get("message", {}).get("content", "")
-                        if content:
-                            ai_answer = content
-                            logger.info(f"从完整JSON解析到答案: {ai_answer}")
-                    except Exception as e:
-                        logger.warning(f"解析完整JSON失败: {str(e)}")
-                        
-                        # 回退到流式响应解析方式
-                        for line in resp.text.strip().split('\n'):
-                            if line.startswith("data: ") and line != "data: [DONE]":
-                                try:
-                                    json_str = line[len("data: "):]
-                                    data = json.loads(json_str)
-                                    content = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                                    if content:
-                                        ai_answer += content
-                                except Exception as e:
-                                    logger.warning(f"解析流式响应行失败: {str(e)}")
-                    
-                    # 成功获取答案，跳出重试循环
-                    # 报告密钥使用成功
-                    key_switcher.report_key_success()
-                    logger.info(f"API请求成功，报告密钥使用成功")
+                # 如果成功获取答案
+                if response and response.get('content'):
+                    ai_answer = response['content']
+                    logger.info(f"使用 {response.get('provider_id')} 的 {response.get('model')} 模型生成答案成功")
                     break
-                elif resp.status_code == 503:
-                    # 切换到下一个模型
-                    model_index = (model_index + 1) % len(models)
-                    model = models[model_index]
-                    logger.warning(f"503错误，切换到下一个模型: {model}")
+                else:
+                    logger.warning(f"生成答案失败，响应为空或无内容")
                     retry_count += 1
                     continue
-                else:
-                    error_msg = f"代理API请求失败: {resp.status_code} - {resp.text}"
-                    logger.error(error_msg)
-                    # 403 只重试，不切换密钥
-                    if resp.status_code == 403:
-                        retry_count += 1
-                        logger.info(f"403错误，直接重试 ({retry_count}/{max_retries})...")
-                        continue
-                    # 其它情况按 should_switch_key 逻辑
-                    if key_switcher.should_switch_key(resp.status_code, resp.text):
-                        logger.info("检测到API错误，尝试切换密钥...")
-                        success = key_switcher.switch_key_if_needed(resp.status_code, resp.text)
-                        if success:
-                            from config import Config as ReloadedConfig
-                            Config.OPENAI_API_KEY = ReloadedConfig.OPENAI_API_KEY
-                            logger.info(f"密钥已切换为: {Config.OPENAI_API_KEY[:10]}...")
-                            retry_count += 1
-                            logger.info(f"正在重试请求 ({retry_count}/{max_retries})...")
-                            if retry_count >= 2:
-                                cache_cleared = key_switcher.clear_token_cache()
-                                logger.info(f"多次重试失败，已清除Token缓存 ({cache_cleared}条记录)")
-                            continue
-                    return jsonify({
-                        'code': 0,
-                        'msg': error_msg
-                    })
                     
             except Exception as e:
-                error_msg = f"代理API请求异常: {str(e)}"
+                error_msg = f"生成答案异常: {str(e)}"
                 logger.error(error_msg)
                 
-                # 检查是否是连接问题，尝试切换密钥
-                if "connect" in str(e).lower() or "timeout" in str(e).lower():
-                    logger.info("检测到连接错误，尝试切换密钥...")
-                    success = key_switcher.switch_key_if_needed(500, str(e))
-                    
-                    if success:
-                        # 重新加载配置，获取新的API密钥
-                        from config import Config as ReloadedConfig
-                        Config.OPENAI_API_KEY = ReloadedConfig.OPENAI_API_KEY
-                        logger.info(f"密钥已切换为: {Config.OPENAI_API_KEY[:10]}...")
-                        
-                        # 增加重试计数
-                        retry_count += 1
-                        logger.info(f"正在重试请求 ({retry_count}/{max_retries})...")
-                        continue
+                # 如果是特定供应商或模型的错误，尝试切换到默认供应商
+                if provider_id or model:
+                    logger.info(f"尝试切换到默认供应商和模型")
+                    provider_id = None
+                    model = None
+                    retry_count += 1
+                    continue
                 
-                # 如果不需要切换密钥或切换失败，返回错误
+                # 如果已经是默认供应商，返回错误
                 return jsonify({
                     'code': 0,
                     'msg': error_msg
@@ -477,7 +449,7 @@ def search():
             logger.error(f"达到最大重试次数 ({max_retries})，无法获取答案")
             return jsonify({
                 'code': 0,
-                'msg': f'请求失败，已尝试切换密钥并重试 {max_retries} 次'
+                'msg': f'请求失败，已尝试切换供应商并重试 {max_retries} 次'
             })
         
         # 处理答案格式
@@ -506,7 +478,8 @@ def search():
             return jsonify(format_answer_for_ocs(question, processed_answer))
         
         # 查重：如已存在则更新，否则插入
-        existing = db.query(QARecord).filter(
+        db_session = get_db_session()
+        existing = db_session.query(QARecord).filter(
             QARecord.question == question,
             QARecord.type == question_type,
             QARecord.options == options
@@ -522,8 +495,11 @@ def search():
                 answer=processed_answer,
                 created_at=datetime.now()
             )
-            db.add(qa_record)
-        db.commit()
+            db_session.add(qa_record)
+        try:
+            db_session.commit()
+        finally:
+            close_db_session(db_session)
         
         # 记录处理时间
         process_time = time.time() - start_time
@@ -593,8 +569,10 @@ def update_record():
     try:
         data = request.get_json()
         record_id = int(data.get('record_id', -1))
+        # 获取数据库会话
+        db_session = get_db_session()
         # 查询记录
-        record = db.query(QARecord).filter(QARecord.id == record_id).first()
+        record = db_session.query(QARecord).filter(QARecord.id == record_id).first()
         if not record:
             return jsonify({
                 'success': False,
@@ -622,14 +600,17 @@ def update_record():
             record.options = data['options']
         if 'answer' in data and data['answer'] is not None and str(data['answer']).strip() != '':
             record.answer = data['answer']
-        db.commit()
-        # 如果启用了缓存，更新缓存
-        if Config.ENABLE_CACHE:
-            cache.delete(f'qa_{record_id}')
-        return jsonify({
-            'success': True,
-            'message': '记录已更新'
-        })
+        try:
+            db_session.commit()
+            # 如果启用了缓存，更新缓存
+            if Config.ENABLE_CACHE:
+                cache.delete(f'qa_{record_id}')
+            return jsonify({
+                'success': True,
+                'message': '记录已更新'
+            })
+        finally:
+            close_db_session(db_session)
     except Exception as e:
         app.logger.error(f"更新记录异常: {e}")
         return jsonify({
@@ -645,8 +626,10 @@ def delete_record():
     try:
         data = request.get_json()
         record_id = int(data.get('record_id', -1))
+        # 获取数据库会话
+        db_session = get_db_session()
         # 查询记录
-        record = db.query(QARecord).filter(QARecord.id == record_id).first()
+        record = db_session.query(QARecord).filter(QARecord.id == record_id).first()
         if not record:
             return jsonify({
                 'success': False,
@@ -659,12 +642,15 @@ def delete_record():
             except Exception as e:
                 logger.warning(f"删除缓存时发生错误: {str(e)}")
         logger.info(f"删除记录 {record.id}: '{record.question[:30]}...'")
-        db.delete(record)
-        db.commit()
-        return jsonify({
-            'success': True,
-            'message': '记录已删除'
-        })
+        db_session.delete(record)
+        try:
+            db_session.commit()
+            return jsonify({
+                'success': True,
+                'message': '记录已删除'
+            })
+        finally:
+            close_db_session(db_session)
     except Exception as e:
         logger.error(f"删除记录时发生错误: {str(e)}", exc_info=True)
         return jsonify({
@@ -681,13 +667,15 @@ def login_required(view_func):
             # 检查cookies中是否有会话ID
             session_id = request.cookies.get('session_id')
             if session_id:
+                # 获取数据库会话
+                db_session = get_db_session()
                 # 验证会话
-                user_id = UserSession.validate_session(db, session_id)
+                user_id = UserSession.validate_session(db_session, session_id)
                 if user_id:
                     # 将用户ID存入session
                     session['user_id'] = user_id
                     # 获取用户信息
-                    user = get_user_by_id(db, user_id)
+                    user = get_user_by_id(db_session, user_id)
                     if user:
                         session['username'] = user.username
                         session['is_admin'] = user.is_admin
@@ -782,7 +770,7 @@ def set_session_ajax():
                 json.dump(config_data, f, indent=4, ensure_ascii=False)
             
             # 立即同步 tokens 到 config.json
-            from token_sync import sync_tokens_to_config
+            from services.token_sync import sync_tokens_to_config
             sync_tokens_to_config()
             
             logger.info("Session 已保存并同步到 config.json")
@@ -865,12 +853,51 @@ def key_pool():
             'message': f"获取密钥池信息失败: {str(e)}"
         }), 500
 
-# 注册Blueprint
+# 注册Blueprint# 注册蓝图
 app.register_blueprint(auth_bp)
 app.register_blueprint(token_bp)
 app.register_blueprint(questions_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(logs_bp)
+from routes.provider import provider_bp
+app.register_blueprint(provider_bp)
+
+# 注册图片代理蓝图
+register_image_proxy_bp(app)
+
+# 添加一个简单的测试端点，用于检查 API 是否可以正常响应
+@app.route('/api/test', methods=['GET'])
+def test_api():
+    """测试 API 是否可以正常响应"""
+    return jsonify({
+        'success': True,
+        'message': 'API 端点正常响应'
+    })
+
+# 添加清除所有缓存的API端点
+def clear_all_cache():
+    """清除所有缓存数据"""
+    try:
+        # 清除Redis缓存(如果启用)
+        if cache is not None:
+            cache.clear()
+            logger.info("Redis缓存已清空")
+        
+        # 清除内存缓存
+        from routes.questions import question_cache
+        if question_cache is not None:
+            question_cache.clear()
+            logger.info("内存缓存已清空")
+            
+        # 清除token缓存
+        from services.key_switcher import clear_token_cache
+        cleared_count = clear_token_cache()
+        logger.info(f"Token缓存已清空，共{cleared_count}条")
+        
+        return jsonify({"code": 1, "msg": "所有缓存已清空"})
+    except Exception as e:
+        logger.error(f"清空缓存失败: {str(e)}")
+        return jsonify({"code": 0, "msg": f"清空缓存失败: {str(e)}"})
 
 # 将当前请求的数据库会话注入到模板中
 @app.context_processor
@@ -884,5 +911,12 @@ scheduler.add_job(sync_tokens_to_config, 'interval', hours=1, id='token_sync_job
 scheduler.start()
 
 if __name__ == '__main__':
+    # 记录应用启动时间
+    start_time = time.time()
+    
+    # 禁用Flask自动加载.env文件
+    import os
+    os.environ["FLASK_SKIP_DOTENV"] = "1"
+    
     # 开启应用
     app.run(host=Config.HOST, port=Config.PORT, debug=Config.DEBUG)

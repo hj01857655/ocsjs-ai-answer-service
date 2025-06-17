@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify
 from datetime import datetime
 import os
 import glob
-from logger import Logger
+from utils.logger import Logger
 from config import Config
 from utils import login_required, admin_required
 

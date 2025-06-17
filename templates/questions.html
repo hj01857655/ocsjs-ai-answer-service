@@ -132,6 +132,9 @@
         100% { opacity: 0.8; }
     }
 </style>
+<script>
+// 图片处理代码已移除
+</script>
 {% endblock %}
 
 {% block content %}
@@ -299,13 +302,13 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="text-truncate" style="max-width: 300px;" title="{{ record.question }}">
-                                    {{ record.question }}
+                                <div class="question-content" style="max-width: 300px; max-height: 100px; overflow: auto;" title="{{ record.question }}">
+                                    {{ record.question|safe }}
                                 </div>
                             </td>
                             <td>
-                                <div class="text-truncate" style="max-width: 200px;" title="{{ record.answer }}">
-                                    {{ record.answer }}
+                                <div class="answer-content" style="max-width: 200px; max-height: 100px; overflow: auto;" title="{{ record.answer }}">
+                                    {{ record.answer|safe }}
                                 </div>
                             </td>
                             <td>{{ record.time }}</td>

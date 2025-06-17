@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, send_file, current_app, g
 from models import QARecord, get_db_session, close_db_session
 from utils import login_required, admin_required
-from logger import app_logger as logger
+from utils.logger import app_logger as logger
+from utils.question_cleaner import clean_question_prefix
 from datetime import datetime
 import time
 # 使用系统日志记录器，确保题目录入日志显示在日志页面上
@@ -270,6 +271,8 @@ def add_single_record():
             
             for item in questions_data:
                 question = item.get('question', '')
+                # 清理题目前缀
+                question = clean_question_prefix(question)
                 question_type = item.get('type', '')
                 options = item.get('options', '')
                 answer = item.get('answer', '')
@@ -331,6 +334,8 @@ def add_single_record():
         else:
             # 单题导入模式
             question = data.get('question', '')
+            # 清理题目前缀
+            question = clean_question_prefix(question)
             question_type = data.get('type', '')
             options = data.get('options', '')
             answer = data.get('answer', '')

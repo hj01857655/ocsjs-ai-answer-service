@@ -6,31 +6,31 @@
     /* 现代化设置页面样式 */
     .settings-card {
         border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         border: none;
         overflow: hidden;
         transition: all 0.3s ease;
     }
-    
+
     .settings-card:hover {
-        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
     }
-    
+
     .settings-card .card-header {
         border-bottom: none;
         padding: 1.25rem 1.5rem;
     }
-    
+
     .settings-card .card-body {
         padding: 1.5rem;
     }
-    
+
     /* 标签页样式 */
     .nav-tabs {
         border-bottom: 1px solid #dee2e6;
         margin-bottom: 1.5rem;
     }
-    
+
     .nav-tabs .nav-link {
         border: none;
         border-bottom: 3px solid transparent;
@@ -40,37 +40,41 @@
         font-weight: 500;
         transition: all 0.2s ease;
     }
-    
+
     .nav-tabs .nav-link:hover {
         border-bottom-color: rgba(13, 110, 253, 0.3);
         color: #0d6efd;
     }
-    
+
     .nav-tabs .nav-link.active {
         color: #0d6efd;
         border-bottom-color: #0d6efd;
         background-color: transparent;
     }
-    
+
     /* 表单元素样式 */
-    .form-control, .form-select {
+    .form-control,
+    .form-select {
         border-radius: 8px;
         padding: 0.6rem 1rem;
         border: 1px solid #dee2e6;
         transition: all 0.2s ease;
     }
-    
-    .form-control:focus, .form-select:focus {
+
+    .form-control:focus,
+    .form-select:focus {
         border-color: #86b7fe;
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
-    
-    .form-control:disabled, .form-select:disabled,
-    .form-control[readonly], .form-select[readonly] {
+
+    .form-control:disabled,
+    .form-select:disabled,
+    .form-control[readonly],
+    .form-select[readonly] {
         background-color: #f8f9fa;
         opacity: 0.8;
     }
-    
+
     /* 开关样式 */
     .form-check-input {
         width: 2.5em;
@@ -88,7 +92,7 @@
         print-color-adjust: exact;
         transition: background-color 0.15s ease-in-out, background-position 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
     }
-    
+
     .form-switch .form-check-input {
         width: 3em;
         margin-left: -2.5em;
@@ -97,12 +101,12 @@
         border-radius: 2em;
         transition: background-position 0.15s ease-in-out;
     }
-    
+
     .form-switch .form-check-input:checked {
         background-position: right center;
         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
     }
-    
+
     /* 按钮样式 */
     .btn {
         border-radius: 8px;
@@ -110,68 +114,76 @@
         font-weight: 500;
         transition: all 0.3s ease;
     }
-    
+
     .btn-primary {
         background: linear-gradient(135deg, #007bff, #0056b3);
         border: none;
     }
-    
+
     .btn-primary:hover {
         background: linear-gradient(135deg, #0069d9, #004494);
         transform: translateY(-2px);
         box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
     }
-    
+
     .btn-secondary {
         background: linear-gradient(135deg, #6c757d, #495057);
         border: none;
     }
-    
+
     .btn-secondary:hover {
         background: linear-gradient(135deg, #5a6268, #383d41);
         transform: translateY(-2px);
         box-shadow: 0 4px 10px rgba(108, 117, 125, 0.3);
     }
-    
+
     /* 编辑模式指示器 */
     .editing-indicator {
         transition: all 0.3s ease;
     }
-    
+
     .badge.editing-indicator {
         font-size: 0.75rem;
         padding: 0.35em 0.65em;
         animation: pulse 1.5s infinite;
     }
-    
+
     @keyframes pulse {
-        0% { opacity: 0.8; }
-        50% { opacity: 1; }
-        100% { opacity: 0.8; }
+        0% {
+            opacity: 0.8;
+        }
+
+        50% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: 0.8;
+        }
     }
-    
+
     /* 标签页内容区域 */
     .tab-content {
         background-color: #fff;
         border-radius: 0 0 15px 15px;
     }
-    
+
     .tab-pane {
         padding: 1.5rem;
     }
-    
+
     /* 设置分组 */
     .settings-section {
         margin-bottom: 2rem;
         padding-bottom: 1.5rem;
         border-bottom: 1px solid #eee;
     }
-    
+
     .settings-section:last-child {
         border-bottom: none;
         margin-bottom: 0;
     }
-    
+
     .settings-section h5 {
         color: #0d6efd;
         margin-bottom: 1.5rem;
@@ -194,152 +206,181 @@
                 </div>
                 <div class="card-body">
                     <div class="alert alert-warning editing-indicator" style="display:none;">正在编辑设置，请保存或取消</div>
-                    
+
                     {% if success %}
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <strong>成功！</strong> {{ success }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
                     </div>
                     {% endif %}
-                    
+
                     {% if error %}
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         <strong>错误！</strong> {{ error }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
                     </div>
                     {% endif %}
-                    
+
                     <form method="post" action="/settings" id="settingsForm">
                         <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="openai-tab" data-bs-toggle="tab" data-bs-target="#openai" type="button" role="tab">OpenAI配置</button>
+                                <button class="nav-link" id="openai-tab" data-bs-toggle="tab" data-bs-target="#openai"
+                                    type="button" role="tab">OpenAI配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="cache-tab" data-bs-toggle="tab" data-bs-target="#cache" type="button" role="tab">缓存配置</button>
+                                <button class="nav-link" id="cache-tab" data-bs-toggle="tab" data-bs-target="#cache"
+                                    type="button" role="tab">缓存配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="database-tab" data-bs-toggle="tab" data-bs-target="#database" type="button" role="tab">数据库配置</button>
+                                <button class="nav-link" id="database-tab" data-bs-toggle="tab"
+                                    data-bs-target="#database" type="button" role="tab">数据库配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="redis-tab" data-bs-toggle="tab" data-bs-target="#redis" type="button" role="tab">Redis配置</button>
+                                <button class="nav-link" id="redis-tab" data-bs-toggle="tab" data-bs-target="#redis"
+                                    type="button" role="tab">Redis配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="record-tab" data-bs-toggle="tab" data-bs-target="#record" type="button" role="tab">记录配置</button>
+                                <button class="nav-link" id="record-tab" data-bs-toggle="tab" data-bs-target="#record"
+                                    type="button" role="tab">记录配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="service-tab" data-bs-toggle="tab" data-bs-target="#service" type="button" role="tab">服务信息</button>
+                                <button class="nav-link" id="service-tab" data-bs-toggle="tab" data-bs-target="#service"
+                                    type="button" role="tab">服务信息</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab">安全信息</button>
+                                <button class="nav-link" id="security-tab" data-bs-toggle="tab"
+                                    data-bs-target="#security" type="button" role="tab">安全信息</button>
                             </li>
                         </ul>
-                        
+
                         <div class="tab-content p-3 border border-top-0 rounded-bottom" id="settingsTabContent">
+
+
                             <!-- OpenAI配置 -->
-                            <div class="tab-pane fade show active" id="openai" role="tabpanel" aria-labelledby="openai-tab">
+                            <div class="tab-pane fade" id="openai" role="tabpanel" aria-labelledby="openai-tab">
                                 <h5 class="mb-3">OpenAI API配置</h5>
                                 <div class="mb-3">
                                     <label for="openai_api_key" class="form-label">API密钥</label>
-                                    <input type="password" class="form-control" id="openai_api_key" name="openai_api_key" value="{{ config.openai.api_key }}" readonly>
+                                    <input type="password" class="form-control" id="openai_api_key"
+                                        name="openai_api_key" value="{{ config.openai.api_key }}" readonly>
                                 </div>
                                 <div class="mb-3">
                                     <label for="openai_session" class="form-label">Session</label>
-                                    <input type="text" class="form-control" id="openai_session" name="openai_session" value="{{ config.openai.session }}" readonly>
+                                    <input type="text" class="form-control" id="openai_session" name="openai_session"
+                                        value="{{ config.openai.session }}" readonly>
                                 </div>
                                 <div class="mb-3">
                                     <label for="openai_api_base" class="form-label">API基础URL</label>
-                                    <input type="text" class="form-control" id="openai_api_base" name="openai_api_base" value="{{ config.openai.api_base }}" readonly>
+                                    <input type="text" class="form-control" id="openai_api_base" name="openai_api_base"
+                                        value="{{ config.openai.api_base }}" readonly>
                                 </div>
                                 <div class="mb-3">
                                     <label for="openai_model" class="form-label">默认模型</label>
-                                    <input type="text" class="form-control" id="openai_model" name="openai_model" value="{{ config.openai.model }}" readonly>
+                                    <input type="text" class="form-control" id="openai_model" name="openai_model"
+                                        value="{{ config.openai.model }}" readonly>
                                 </div>
                                 <div class="mb-3">
                                     <label for="openai_models" class="form-label">可用模型列表</label>
-                                    <select class="form-select" id="openai_models" name="openai_models" multiple disabled>
+                                    <select class="form-select" id="openai_models" name="openai_models" multiple
+                                        disabled>
                                         {% for model in config.openai.models %}
-                                        <option value="{{ model }}" {% if model == config.openai.model %}selected{% endif %}>{{ model }}</option>
+                                        <option value="{{ model }}" {% if model==config.openai.model %}selected{% endif
+                                            %}>{{ model }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
                             </div>
-                            
+
                             <!-- 缓存配置 -->
                             <div class="tab-pane fade" id="cache" role="tabpanel" aria-labelledby="cache-tab">
                                 <h5 class="mb-3">缓存配置</h5>
                                 <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" id="cache_enable" name="cache_enable" {% if config.cache.enable %}checked{% endif %} disabled>
+                                    <input class="form-check-input" type="checkbox" id="cache_enable"
+                                        name="cache_enable" {% if config.cache.enable %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="cache_enable">启用缓存</label>
                                 </div>
                                 <div class="mb-3">
                                     <label for="cache_expiration" class="form-label">缓存过期时间（秒）</label>
-                                    <input type="number" class="form-control" id="cache_expiration" name="cache_expiration" value="{{ config.cache.expiration }}" readonly>
+                                    <input type="number" class="form-control" id="cache_expiration"
+                                        name="cache_expiration" value="{{ config.cache.expiration }}" readonly>
                                 </div>
                             </div>
-                            
+
                             <!-- 数据库配置 -->
                             <div class="tab-pane fade" id="database" role="tabpanel" aria-labelledby="database-tab">
                                 <h5 class="mb-3">MySQL数据库配置</h5>
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label for="db_host" class="form-label">数据库主机</label>
-                                        <input type="text" class="form-control" id="db_host" name="db_host" value="{{ config.database.host }}" readonly>
+                                        <input type="text" class="form-control" id="db_host" name="db_host"
+                                            value="{{ config.database.host }}" readonly>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="db_port" class="form-label">数据库端口</label>
-                                        <input type="number" class="form-control" id="db_port" name="db_port" value="{{ config.database.port }}" readonly>
+                                        <input type="number" class="form-control" id="db_port" name="db_port"
+                                            value="{{ config.database.port }}" readonly>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="db_user" class="form-label">用户名</label>
-                                        <input type="text" class="form-control" id="db_user" name="db_user" value="{{ config.database.user }}" readonly>
+                                        <input type="text" class="form-control" id="db_user" name="db_user"
+                                            value="{{ config.database.user }}" readonly>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="db_password" class="form-label">密码</label>
-                                        <input type="password" class="form-control" id="db_password" name="db_password" value="{{ config.database.password }}" readonly>
+                                        <input type="password" class="form-control" id="db_password" name="db_password"
+                                            value="{{ config.database.password }}" readonly>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="db_name" class="form-label">数据库名</label>
-                                        <input type="text" class="form-control" id="db_name" name="db_name" value="{{ config.database.name }}" readonly>
+                                        <input type="text" class="form-control" id="db_name" name="db_name"
+                                            value="{{ config.database.name }}" readonly>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Redis配置 -->
                             <div class="tab-pane fade" id="redis" role="tabpanel" aria-labelledby="redis-tab">
                                 <h5 class="mb-3">Redis服务配置</h5>
                                 <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" id="redis_enabled" name="redis_enabled" {% if config.redis.enabled %}checked{% endif %} disabled>
+                                    <input class="form-check-input" type="checkbox" id="redis_enabled"
+                                        name="redis_enabled" {% if config.redis.enabled %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="redis_enabled">启用Redis</label>
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label for="redis_host" class="form-label">Redis主机</label>
-                                        <input type="text" class="form-control" id="redis_host" name="redis_host" value="{{ config.redis.host }}" readonly>
+                                        <input type="text" class="form-control" id="redis_host" name="redis_host"
+                                            value="{{ config.redis.host }}" readonly>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="redis_port" class="form-label">Redis端口</label>
-                                        <input type="number" class="form-control" id="redis_port" name="redis_port" value="{{ config.redis.port }}" readonly>
+                                        <input type="number" class="form-control" id="redis_port" name="redis_port"
+                                            value="{{ config.redis.port }}" readonly>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="redis_password" class="form-label">Redis密码</label>
-                                        <input type="password" class="form-control" id="redis_password" name="redis_password" value="{{ config.redis.password }}" readonly>
+                                        <input type="password" class="form-control" id="redis_password"
+                                            name="redis_password" value="{{ config.redis.password }}" readonly>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="redis_db" class="form-label">Redis数据库</label>
-                                        <input type="number" class="form-control" id="redis_db" name="redis_db" value="{{ config.redis.db }}" readonly>
+                                        <input type="number" class="form-control" id="redis_db" name="redis_db"
+                                            value="{{ config.redis.db }}" readonly>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- 记录配置 -->
                             <div class="tab-pane fade" id="record" role="tabpanel" aria-labelledby="record-tab">
                                 <h5 class="mb-3">记录配置</h5>
                                 <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" id="record_enable" name="record_enable" {% if config.record.enable %}checked{% endif %} disabled>
+                                    <input class="form-check-input" type="checkbox" id="record_enable"
+                                        name="record_enable" {% if config.record.enable %}checked{% endif %} disabled>
                                     <label class="form-check-label" for="record_enable">启用记录</label>
                                 </div>
                             </div>
-                            
+
                             <!-- 服务信息（只读） -->
                             <div class="tab-pane fade" id="service" role="tabpanel" aria-labelledby="service-tab">
                                 <h5 class="mb-3">服务信息</h5>
@@ -349,31 +390,36 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">服务端口</label>
-                                    <input type="number" class="form-control" value="{{ config.service.port }}" readonly>
+                                    <input type="number" class="form-control" value="{{ config.service.port }}"
+                                        readonly>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Debug模式</label>
                                     <input type="text" class="form-control" value="{{ config.service.debug }}" readonly>
                                 </div>
                             </div>
-                            
+
                             <!-- 安全信息（只读） -->
                             <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
                                 <h5 class="mb-3">安全信息</h5>
                                 <div class="mb-3">
                                     <label class="form-label">Secret Key</label>
-                                    <input type="text" class="form-control" value="{{ config.security.secret_key }}" readonly>
+                                    <input type="text" class="form-control" value="{{ config.security.secret_key }}"
+                                        readonly>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Access Token</label>
-                                    <input type="text" class="form-control" value="{{ config.security.access_token }}" readonly>
+                                    <input type="text" class="form-control" value="{{ config.security.access_token }}"
+                                        readonly>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="mt-4 text-center edit-mode">
-                            <button type="submit" class="btn btn-primary edit-mode-btn" style="display:none;">保存设置</button>
-                            <button type="button" id="cancelEditBtn" class="btn btn-secondary ms-2 edit-mode-btn" style="display:none;">取消编辑</button>
+                            <button type="submit" class="btn btn-primary edit-mode-btn"
+                                style="display:none;">保存设置</button>
+                            <button type="button" id="cancelEditBtn" class="btn btn-secondary ms-2 edit-mode-btn"
+                                style="display:none;">取消编辑</button>
                         </div>
                     </form>
                 </div>
@@ -382,156 +428,557 @@
     </div>
 </div>
 <script>
-{{ super() }}
-// 加载动画
-let loadingOverlay;
+    {{ super() }}
+    // 加载动画
+    let loadingOverlay;
 
-// 显示加载动画
-function showLoading() {
-    if (!loadingOverlay) {
-        loadingOverlay = document.createElement('div');
-        loadingOverlay.id = 'loadingOverlay';
-        loadingOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 9999; display: flex; justify-content: center; align-items: center;';
-        
-        const spinner = document.createElement('div');
-        spinner.className = 'spinner-border text-light';
-        spinner.style.cssText = 'width: 3rem; height: 3rem;';
-        spinner.setAttribute('role', 'status');
-        
-        const srOnly = document.createElement('span');
-        srOnly.className = 'visually-hidden';
-        srOnly.textContent = '加载中...';
-        
-        spinner.appendChild(srOnly);
-        loadingOverlay.appendChild(spinner);
-        document.body.appendChild(loadingOverlay);
-    } else {
-        loadingOverlay.style.display = 'flex';
-    }
-}
+    // 显示加载动画
+    function showLoading() {
+        if (!loadingOverlay) {
+            loadingOverlay = document.createElement('div');
+            loadingOverlay.id = 'loadingOverlay';
+            loadingOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 9999; display: flex; justify-content: center; align-items: center;';
 
-// 隐藏加载动画
-function hideLoading() {
-    if (loadingOverlay) {
-        loadingOverlay.style.display = 'none';
-    }
-}
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner-border text-light';
+            spinner.style.cssText = 'width: 3rem; height: 3rem;';
+            spinner.setAttribute('role', 'status');
 
-// 编辑模式切换逻辑
-const editBtn = document.getElementById('editModeBtn');
-const cancelBtn = document.getElementById('cancelEditBtn');
-const editModeIndicators = document.querySelectorAll('.editing-indicator');
-const editModeBtns = document.querySelectorAll('.edit-mode-btn');
-const form = document.getElementById('settingsForm');
+            const srOnly = document.createElement('span');
+            srOnly.className = 'visually-hidden';
+            srOnly.textContent = '加载中...';
 
-// 设置编辑模式
-function setEditMode(edit) {
-    // 显示/隐藏编辑模式指示器
-    editModeIndicators.forEach(el => {
-        if (edit) {
-            el.style.display = 'block';
-            // 添加渐变动画
-            setTimeout(() => el.style.opacity = '1', 10);
+            spinner.appendChild(srOnly);
+            loadingOverlay.appendChild(spinner);
+            document.body.appendChild(loadingOverlay);
         } else {
-            el.style.opacity = '0';
-            setTimeout(() => el.style.display = 'none', 300);
+            loadingOverlay.style.display = 'flex';
         }
-    });
-    
-    // 显示/隐藏编辑模式按钮
-    editModeBtns.forEach(btn => {
-        if (btn.classList.contains('view-mode-btn')) {
-            if (edit) {
-                btn.style.opacity = '0';
-                setTimeout(() => btn.style.display = 'none', 300);
-            } else {
-                btn.style.display = 'block';
-                setTimeout(() => btn.style.opacity = '1', 10);
-            }
-        } else {
-            if (edit) {
-                btn.style.display = 'inline-block';
-                setTimeout(() => btn.style.opacity = '1', 10);
-            } else {
-                btn.style.opacity = '0';
-                setTimeout(() => btn.style.display = 'none', 300);
-            }
+    }
+
+    // 隐藏加载动画
+    function hideLoading() {
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
         }
-    });
-    
-    // 设置表单元素的只读属性
-    const formElements = form.querySelectorAll('input, select, textarea');
-    formElements.forEach(el => {
-        if (el.type === 'checkbox' || el.type === 'radio') {
-            el.disabled = !edit;
-        } else {
-            el.readOnly = !edit;
-            if (el.tagName === 'SELECT') {
+    }
+
+    // 编辑模式切换逻辑
+    const editBtn = document.getElementById('editModeBtn');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const editModeIndicators = document.querySelectorAll('.editing-indicator');
+    const editModeBtns = document.querySelectorAll('.edit-mode-btn');
+    const form = document.getElementById('settingsForm');
+
+    // 设置编辑模式
+    function setEditMode(edit) {
+        // 显示/隐藏编辑模式指示器
+        editModeIndicators.forEach(el => {
+            if (edit) {
+                el.style.display = 'block';
+                // 添加渐变动画
+                setTimeout(() => el.style.opacity = '1', 10);
+            } else {
+                el.style.opacity = '0';
+                setTimeout(() => el.style.display = 'none', 300);
+            }
+        });
+
+        // 显示/隐藏编辑模式按钮
+        editModeBtns.forEach(btn => {
+            if (btn.classList.contains('view-mode-btn')) {
+                if (edit) {
+                    btn.style.opacity = '0';
+                    setTimeout(() => btn.style.display = 'none', 300);
+                } else {
+                    btn.style.display = 'block';
+                    setTimeout(() => btn.style.opacity = '1', 10);
+                }
+            } else {
+                if (edit) {
+                    btn.style.display = 'inline-block';
+                    setTimeout(() => btn.style.opacity = '1', 10);
+                } else {
+                    btn.style.opacity = '0';
+                    setTimeout(() => btn.style.display = 'none', 300);
+                }
+            }
+        });
+
+        // 设置表单元素的只读属性
+        const formElements = form.querySelectorAll('input, select, textarea');
+        formElements.forEach(el => {
+            if (el.type === 'checkbox' || el.type === 'radio') {
                 el.disabled = !edit;
+            } else {
+                el.readOnly = !edit;
+                if (el.tagName === 'SELECT') {
+                    el.disabled = !edit;
+                }
+            }
+
+            // 添加视觉反馈
+            if (edit) {
+                el.classList.add('editable');
+                // 添加输入事件监听器
+                el.addEventListener('input', validateInput);
+            } else {
+                el.classList.remove('editable');
+                el.classList.remove('is-valid');
+                el.classList.remove('is-invalid');
+                // 移除输入事件监听器
+                el.removeEventListener('input', validateInput);
+            }
+        });
+
+        // 编辑模式下添加表单验证
+        if (edit && form) {
+            form.classList.add('needs-validation');
+        } else if (form) {
+            // 安全地移除类
+            try {
+                form.classList.remove('needs-validation');
+                form.classList.remove('was-validated');
+            } catch (e) {
+                console.error('移除表单类时出错:', e);
             }
         }
-        
-        // 添加视觉反馈
-        if (edit) {
-            el.classList.add('editable');
-            // 添加输入事件监听器
-            el.addEventListener('input', validateInput);
+
+        // 添加动画效果
+        const tabContent = document.getElementById('settingsTabContent');
+        if (tabContent) {
+            tabContent.style.transition = 'all 0.3s ease';
+            tabContent.style.opacity = '0.7';
+            setTimeout(() => {
+                tabContent.style.opacity = '1';
+            }, 300);
+        }
+    }
+
+    // 输入验证
+    function validateInput(e) {
+        const input = e.target;
+        if (input.required && input.value.trim() === '') {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
         } else {
-            el.classList.remove('editable');
-            el.classList.remove('is-valid');
-            el.classList.remove('is-invalid');
-            // 移除输入事件监听器
-            el.removeEventListener('input', validateInput);
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+        }
+    }
+
+    // 进入编辑模式
+    if (editBtn) editBtn.addEventListener('click', function () { setEditMode(true); });
+    // 取消编辑
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            if (confirm('确定要取消编辑吗？所有未保存的更改将丢失。')) {
+                setEditMode(false);
+                // 重新加载页面以恢复原始值
+                location.reload();
+            }
+        });
+    }
+
+    // 模型供应商管理相关JS
+    // 在DOM完全加载后初始化元素
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('初始化模型供应商管理元素');
+    });
+
+    // 使用函数来获取元素，确保在使用时获取最新的元素
+    function getAddProviderBtn() { return document.getElementById('addProviderBtn'); }
+    function getProviderModal() { 
+        const modalElement = document.getElementById('providerModal');
+        if (!modalElement) return null;
+        
+        // 检查是否已有实例
+        let modalInstance = bootstrap.Modal.getInstance(modalElement);
+        if (modalInstance) return modalInstance;
+        
+        // 确保bootstrap已加载
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            try {
+                return new bootstrap.Modal(modalElement);
+            } catch (error) {
+                console.error('创建Modal实例时出错:', error);
+                return null;
+            }
+        } else {
+            console.error('bootstrap未加载或Modal类不可用');
+            return null;
+        }
+    }
+    function getSaveProviderBtn() { return document.getElementById('saveProviderBtn'); }
+    function getProviderForm() { return document.getElementById('providerForm'); }
+    function getProvidersTableBody() { return document.getElementById('providersTableBody'); }
+    function getProviderModelsInput() { return document.getElementById('provider_models'); }
+    function getProviderDefaultModelSelect() { return document.getElementById('provider_default_model'); }
+
+    // 添加供应商按钮点击事件
+    document.addEventListener('DOMContentLoaded', function () {
+        const addProviderBtn = getAddProviderBtn();
+        if (addProviderBtn) {
+            console.log('添加供应商按钮已找到');
+            addProviderBtn.addEventListener('click', function () {
+                // 清空表单
+                const providerForm = getProviderForm();
+                if (providerForm) {
+                    providerForm.reset();
+                } else {
+                    console.error('providerForm元素不存在');
+                }
+
+                const providerIdInput = document.getElementById('provider_id');
+                if (providerIdInput) {
+                    providerIdInput.value = '';
+                }
+
+                const modalLabel = document.getElementById('providerModalLabel');
+                if (modalLabel) {
+                    modalLabel.textContent = '添加供应商';
+                }
+
+                const providerDefaultModelSelect = getProviderDefaultModelSelect();
+                if (providerDefaultModelSelect) {
+                    providerDefaultModelSelect.innerHTML = '';
+                }
+
+                const providerModal = getProviderModal();
+                providerModal.show();
+            });
+        } else {
+            console.error('添加供应商按钮不存在');
+        }
+    })
+
+    // 编辑供应商按钮点击事件
+    document.addEventListener('DOMContentLoaded', function () {
+        // 使用委托事件处理，确保动态添加的元素也能响应点击
+        document.body.addEventListener('click', function (event) {
+            // 检查是否点击了编辑按钮
+            if (event.target.classList.contains('edit-provider-btn') ||
+                event.target.closest('.edit-provider-btn')) {
+
+                const btn = event.target.classList.contains('edit-provider-btn') ?
+                    event.target : event.target.closest('.edit-provider-btn');
+
+                let providerId = btn.getAttribute('data-provider-id');
+                console.log('编辑供应商，原始ID:', providerId);
+
+                // 处理providerId，确保它是一个有效的字符串
+                if (!providerId) {
+                    console.error('供应商ID为空');
+                    alert('供应商ID为空');
+                    return;
+                }
+
+                // 如果ID是对象引用，尝试从表格行中获取ID
+                if (providerId.includes('object at')) {
+                    const row = btn.closest('tr');
+                    if (row) {
+                        const tdId = row.querySelector('td:first-child');
+                        if (tdId && tdId.textContent) {
+                            providerId = tdId.textContent.trim();
+                            console.log('从表格行中获取到ID:', providerId);
+                        }
+                    }
+                }
+
+                // 再次检查ID是否有效
+                if (!providerId || providerId.includes('object at')) {
+                    console.error('无效的供应商ID:', providerId);
+                    alert('无效的供应商ID');
+                    return;
+                }
+
+                const modalLabel = document.getElementById('providerModalLabel');
+                if (modalLabel) {
+                    modalLabel.textContent = '编辑供应商';
+                }
+
+                // 获取供应商数据
+                const url = `/api/model-providers/${providerId}`;
+                console.log('请求URL:', url);
+
+                fetch(url)
+                    .then(response => {
+                        console.log('响应状态:', response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            const provider = data.provider;
+
+                            // 填充表单
+                            const providerIdInput = document.getElementById('provider_id');
+                            if (providerIdInput) providerIdInput.value = provider.provider_id;
+
+                            const providerNameInput = document.getElementById('provider_name');
+                            if (providerNameInput) providerNameInput.value = provider.name;
+
+                            const providerApiKeyInput = document.getElementById('provider_api_key');
+                            if (providerApiKeyInput) providerApiKeyInput.value = provider.api_key;
+
+                            const providerApiBaseInput = document.getElementById('provider_api_base');
+                            if (providerApiBaseInput) providerApiBaseInput.value = provider.api_base;
+
+                            const providerModelsInput = document.getElementById('provider_models');
+                            if (providerModelsInput) providerModelsInput.value = provider.models.join(',');
+
+                            const providerIsActiveInput = document.getElementById('provider_is_active');
+                            if (providerIsActiveInput) providerIsActiveInput.checked = provider.is_active;
+
+                            // 填充参数
+                            if (provider.parameters) {
+                                const paramTemperatureInput = document.getElementById('param_temperature');
+                                if (paramTemperatureInput) paramTemperatureInput.value = provider.parameters.temperature || 0.7;
+
+                                const paramMaxTokensInput = document.getElementById('param_max_tokens');
+                                if (paramMaxTokensInput) paramMaxTokensInput.value = provider.parameters.max_tokens || 500;
+                            }
+
+                            // 更新默认模型下拉列表
+                            const providerDefaultModelSelect = getProviderDefaultModelSelect();
+                            if (providerDefaultModelSelect) {
+                                updateDefaultModelOptions(provider.models, provider.default_model);
+                            }
+
+                            const providerModal = getProviderModal();
+                            providerModal.show();
+                        } else {
+                            alert('获取供应商数据失败: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('获取供应商数据时发生错误');
+                    });
+            }
+        });
+    });
+
+    // 设为默认按钮点击事件
+    document.addEventListener('DOMContentLoaded', function () {
+        // 使用委托事件处理
+        document.body.addEventListener('click', function (event) {
+            // 检查是否点击了设为默认按钮
+            if (event.target.classList.contains('set-default-btn') ||
+                event.target.closest('.set-default-btn')) {
+
+                const btn = event.target.classList.contains('set-default-btn') ?
+                    event.target : event.target.closest('.set-default-btn');
+
+                const providerId = btn.getAttribute('data-provider-id');
+                console.log('设置默认供应商，ID:', providerId);
+
+                // 确保providerId是一个有效的字符串
+                if (!providerId || typeof providerId !== 'string' || providerId.includes('object at')) {
+                    console.error('无效的供应商ID:', providerId);
+                    alert('无效的供应商ID');
+                    return;
+                }
+
+                if (confirm(`确定要将 ${providerId} 设为默认供应商吗？`)) {
+                    fetch('/api/model-providers/set-default', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ provider_id: providerId }),
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('默认供应商设置成功');
+                                location.reload();
+                            } else {
+                                alert('设置默认供应商失败: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('设置默认供应商时发生错误');
+                        });
+                }
+            }
+        });
+
+    });
+
+    // 保存供应商按钮点击事件
+    document.addEventListener('DOMContentLoaded', function () {
+        const saveProviderBtn = getSaveProviderBtn();
+        if (saveProviderBtn) {
+            console.log('保存供应商按钮已找到');
+            saveProviderBtn.addEventListener('click', function () {
+                // 获取表单元素
+                const providerForm = getProviderForm();
+
+                // 检查providerForm是否存在
+                if (!providerForm) {
+                    console.error('providerForm元素不存在');
+                    alert('表单元素不存在，无法保存');
+                    return;
+                }
+
+                if (!providerForm.checkValidity()) {
+                    providerForm.reportValidity();
+                    return;
+                }
+
+                const providerId = document.getElementById('provider_id').value;
+                const isNewProvider = !providerId;
+
+                // 构建供应商数据
+                const providerData = {
+                    provider_id: isNewProvider ? document.getElementById('provider_name').value.toLowerCase().replace(/\s+/g, '_') : providerId,
+                    name: document.getElementById('provider_name').value,
+                    api_key: document.getElementById('provider_api_key').value,
+                    api_base: document.getElementById('provider_api_base').value,
+                    models: document.getElementById('provider_models').value.split(',').map(m => m.trim()),
+                    default_model: document.getElementById('provider_default_model').value,
+                    is_active: document.getElementById('provider_is_active').checked,
+                    parameters: {
+                        temperature: parseFloat(document.getElementById('param_temperature').value),
+                        max_tokens: parseInt(document.getElementById('param_max_tokens').value)
+                    }
+                };
+
+                // 发送请求
+                fetch('/api/model-providers' + (isNewProvider ? '' : `/${providerId}`), {
+                    method: isNewProvider ? 'POST' : 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(providerData),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(isNewProvider ? '供应商添加成功' : '供应商更新成功');
+                            const providerModal = bootstrap.Modal.getInstance(document.getElementById('providerModal'));
+                            if (providerModal) {
+                                providerModal.hide();
+                            }
+                            location.reload();
+                        } else {
+                            alert((isNewProvider ? '添加' : '更新') + '供应商失败: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert((isNewProvider ? '添加' : '更新') + '供应商时发生错误');
+                    });
+            });
+        }
+
+        // 当模型列表输入框内容变化时，更新默认模型下拉列表
+        const providerModelsInput = getProviderModelsInput();
+        if (providerModelsInput) {
+            console.log('模型列表输入框已找到');
+            providerModelsInput.addEventListener('input', function () {
+                const models = this.value.split(',').map(m => m.trim()).filter(m => m);
+                updateDefaultModelOptions(models);
+            });
+        } else {
+            console.error('模型列表输入框不存在');
+        }
+
+        // 更新默认模型下拉列表
+        function updateDefaultModelOptions(models, selectedModel = null) {
+            providerDefaultModelSelect.innerHTML = '';
+            models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                if (selectedModel && model === selectedModel) {
+                    option.selected = true;
+                }
+                providerDefaultModelSelect.appendChild(option);
+            });
+
+            // 如果没有选中的模型且有模型列表，选择第一个
+            if (!selectedModel && models.length > 0) {
+                providerDefaultModelSelect.value = models[0];
+            }
+        }
+
+        // 编辑模式下启用模型供应商管理按钮
+        function setEditMode(edit) {
+            // 原有的编辑模式逻辑
+            const editModeButtons = document.querySelectorAll('.edit-mode-btn');
+            const editModeIndicators = document.querySelectorAll('.editing-indicator');
+            const editableInputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea');
+
+            editModeButtons.forEach(btn => btn.style.display = edit ? 'inline-block' : 'none');
+            editModeIndicators.forEach(indicator => indicator.style.display = edit ? 'block' : 'none');
+
+            editableInputs.forEach(input => {
+                input.readOnly = !edit;
+                input.disabled = !edit;
+            });
+
+            // 模型供应商管理按钮
+            const providerButtons = document.querySelectorAll('#addProviderBtn, .edit-provider-btn, .set-default-btn');
+            providerButtons.forEach(btn => {
+                btn.disabled = !edit;
+            });
+        }
+
+        // 初始化提示工具
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+
+        // 隐藏加载动画
+        hideLoading();
+    });
+</script>
+
+<!-- 添加调试脚本 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('页面加载完成，检查Bootstrap状态');
+        console.log('Bootstrap对象:', typeof bootstrap);
+        if (typeof bootstrap !== 'undefined') {
+            console.log('Bootstrap版本:', bootstrap.Tooltip.VERSION);
+            console.log('Modal类是否存在:', typeof bootstrap.Modal);
+            
+            // 安全地获取模态框元素
+            const modalElement = document.getElementById('providerModal');
+            console.log('模态框元素:', modalElement);
+            
+            if (modalElement) {
+                try {
+                    // 尝试获取已有实例
+                    const existingModal = bootstrap.Modal.getInstance(modalElement);
+                    console.log('已有Modal实例:', existingModal);
+                    
+                    if (!existingModal) {
+                        // 尝试创建新实例
+                        console.log('尝试创建新Modal实例...');
+                        const modal = new bootstrap.Modal(modalElement, {
+                            keyboard: true,
+                            focus: true
+                        });
+                        console.log('新Modal实例创建成功');
+                    }
+                } catch (error) {
+                    console.error('Modal操作出错:', error);
+                }
+            }
+        } else {
+            console.error('Bootstrap未加载！');
         }
     });
-    
-    // 编辑模式下添加表单验证
-    if (edit) {
-        form.classList.add('needs-validation');
-    } else {
-        form.classList.remove('needs-validation');
-        form.classList.remove('was-validated');
-    }
-    
-    // 添加动画效果
-    const tabContent = document.getElementById('settingsTabContent');
-    if (tabContent) {
-        tabContent.style.transition = 'all 0.3s ease';
-        tabContent.style.opacity = '0.7';
-        setTimeout(() => {
-            tabContent.style.opacity = '1';
-        }, 300);
-    }
-}
-
-// 输入验证
-function validateInput(e) {
-    const input = e.target;
-    if (input.required && input.value.trim() === '') {
-        input.classList.add('is-invalid');
-        input.classList.remove('is-valid');
-    } else {
-        input.classList.remove('is-invalid');
-        input.classList.add('is-valid');
-    }
-}
-
-// 进入编辑模式
-if (editBtn) editBtn.addEventListener('click', function() { setEditMode(true); });
-// 取消编辑
-if (cancelBtn) {
-    cancelBtn.addEventListener('click', function() {
-        setEditMode(false);
-        form.reset();
-    });
-}
-// 页面加载后强制只读
-setEditMode(false);
 </script>
+
 <style>
-.card.editing {
-    border: 2px solid #ffc107 !important;
-    box-shadow: 0 0 0 2px #ffe082;
-}
+    .card.editing {
+        border: 2px solid #ffc107 !important;
+        box-shadow: 0 0 0 2px #ffe082;
+    }
 </style>
-{% endblock %} 
+{% endblock %}

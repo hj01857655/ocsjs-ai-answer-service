@@ -703,14 +703,17 @@
             return;
         }
         
-        // 每次搜索前重置题目类型，确保重新识别
-        document.getElementById('aiType').value = '';
-        
+        // 记录用户是否手动选择了题目类型
+        const currentType = document.getElementById('aiType').value;
+        const userManuallySelected = currentType && currentType !== '' && currentType !== 'auto';
+
         // 自动提取选项
         autoExtractOptions();
-        
-        // 确保题目类型被识别
-        autoDetectQuestionType();
+
+        // 只有在用户没有手动选择题目类型时才自动识别
+        if (!userManuallySelected) {
+            autoDetectQuestionType();
+        }
         
         // 隐藏之前的结果
         document.getElementById('aiResult').style.display = 'none';
@@ -727,29 +730,32 @@
         let type = document.getElementById('aiType').value;
         const options = document.getElementById('aiOptions').value.trim();
         
-        // 强制选项检测逻辑，确保有选项时识别为选择题
-        if (options.trim().length > 0) {
-            // 优先检查选项内容
-            if (options.includes('正确') && options.includes('错误') && options.split('\n').length <= 2) {
-                type = 'judgement';
-            } else if (title.includes('多选') || title.includes('多项') || 
-                      title.includes('多项选择') || title.includes('多选题')) {
-                type = 'multiple';
+        // 只有在用户没有手动选择题目类型时才进行自动检测
+        if (!type || type === '' || type === 'auto') {
+            // 强制选项检测逻辑，确保有选项时识别为选择题
+            if (options.trim().length > 0) {
+                // 优先检查选项内容
+                if (options.includes('正确') && options.includes('错误') && options.split('\n').length <= 2) {
+                    type = 'judgement';
+                } else if (title.includes('多选') || title.includes('多项') ||
+                          title.includes('多项选择') || title.includes('多选题')) {
+                    type = 'multiple';
+                } else {
+                    // 默认为单选题
+                    type = 'single';
+                }
             } else {
-                // 默认为单选题
-                type = 'single';
-            }
-        } else if (!type || type === 'auto') {
-            // 没有选项时的判断逻辑
-            if (title.includes('判断') || title.includes('对错') || 
-                title.includes('是否') || title.includes('正误')) {
-                type = 'judgement';
-            } else if (title.includes('填空') || title.includes('补充') || 
-                      title.includes('填写') || /_{2,}|\.\.\.|…+|\[\s*\]|（\s*）|\(\s*\)/g.test(title)) {
-                type = 'completion';
-            } else {
-                // 如果没有明显特征，默认为填空题
-                type = 'completion';
+                // 没有选项时的判断逻辑
+                if (title.includes('判断') || title.includes('对错') ||
+                    title.includes('是否') || title.includes('正误')) {
+                    type = 'judgement';
+                } else if (title.includes('填空') || title.includes('补充') ||
+                          title.includes('填写') || /_{2,}|\.\.\.|…+|\[\s*\]|（\s*）|\(\s*\)/g.test(title)) {
+                    type = 'completion';
+                } else {
+                    // 如果没有明显特征，默认为填空题
+                    type = 'completion';
+                }
             }
         }
         

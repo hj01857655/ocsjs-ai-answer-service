@@ -82,6 +82,32 @@ class User(Base):
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
         }
 
+# 模型供应商模型
+class ModelProvider(Base):
+    __tablename__ = 'model_providers'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), nullable=False, comment='供应商名称')
+    api_key = Column(String(128), nullable=True, comment='API密钥')
+    api_base = Column(String(256), nullable=True, comment='API基础URL')
+    models = Column(Text, nullable=True, comment='可用模型列表')
+    default_model = Column(String(64), nullable=True, comment='默认模型')
+    is_active = Column(Boolean, default=True, comment='是否激活')
+    temperature = Column(String(16), nullable=True, comment='Temperature参数')
+    max_tokens = Column(Integer, nullable=True, comment='Max Tokens参数')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'api_key': self.api_key,
+            'api_base': self.api_base,
+            'models': self.models,
+            'default_model': self.default_model,
+            'is_active': self.is_active,
+            'temperature': self.temperature,
+            'max_tokens': self.max_tokens,
+        }
+
 # 用户会话模型
 class UserSession(Base):
     __tablename__ = 'user_sessions'

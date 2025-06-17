@@ -8,7 +8,8 @@ import json
 
 # 加载JSON配置文件
 def load_config():
-    config_file = os.path.join(os.path.dirname(__file__), 'config.json')
+    # 从项目根目录加载配置文件
+    config_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
     try:
         if os.path.exists(config_file):
             with open(config_file, 'r', encoding='utf-8') as f:
@@ -38,6 +39,26 @@ class Config:
     OPENAI_API_BASE = _config.get('openai', {}).get('api_base', 'https://veloera.wei.bi')
     OPENAI_TEMPERATURE = float(_config.get('response', {}).get('temperature', 0.7))
     OPENAI_MAX_TOKENS = int(_config.get('response', {}).get('max_tokens', 500))
+    
+    # Anthropic配置
+    ANTHROPIC_API_KEY = _config.get('anthropic', {}).get('api_key')
+    ANTHROPIC_MODEL = _config.get('anthropic', {}).get('model', "claude-3-sonnet-20240229")
+    ANTHROPIC_MODELS = _config.get('anthropic', {}).get('models', ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"])
+    ANTHROPIC_API_BASE = _config.get('anthropic', {}).get('api_base', 'https://api.anthropic.com')
+    ANTHROPIC_TEMPERATURE = float(_config.get('anthropic', {}).get('temperature', 0.7))
+    ANTHROPIC_MAX_TOKENS = int(_config.get('anthropic', {}).get('max_tokens', 500))
+    
+    # Google配置
+    GOOGLE_API_KEY = _config.get('google', {}).get('api_key')
+    GOOGLE_MODEL = _config.get('google', {}).get('model', "gemini-pro")
+    GOOGLE_MODELS = _config.get('google', {}).get('models', ["gemini-pro", "gemini-ultra"])
+    GOOGLE_API_BASE = _config.get('google', {}).get('api_base', 'https://generativelanguage.googleapis.com')
+    GOOGLE_TEMPERATURE = float(_config.get('google', {}).get('temperature', 0.7))
+    GOOGLE_MAX_TOKENS = int(_config.get('google', {}).get('max_tokens', 500))
+    
+    # 模型供应商配置
+    MODEL_PROVIDERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'model_providers.json')
+    DEFAULT_PROVIDER = _config.get('default_provider', 'openai')
     
     # 日志配置
     LOG_LEVEL = _config.get('logging', {}).get('level', "INFO")
