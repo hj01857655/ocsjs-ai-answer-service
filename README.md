@@ -658,9 +658,11 @@ ocsjs-ai-answer-service/
 │   └── key_switcher.py      # 密钥管理服务
 ├── utils/                   # 工具函数
 │   ├── __init__.py
-│   ├── formatter.py         # 格式化工具
-│   ├── parser.py            # 解析工具
-│   └── logger.py            # 日志工具
+│   ├── utils.py             # 通用工具函数
+│   ├── auth.py              # 认证工具
+│   ├── logger.py            # 日志工具
+│   ├── question_cleaner.py  # 题目清理工具
+│   └── get_models_list.py   # 模型列表获取工具
 ├── static/                  # 静态资源
 │   ├── css/                 # 样式文件
 │   ├── js/                  # JavaScript文件

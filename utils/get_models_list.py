@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-获取第三方API服务的模型列表
+获取第三方API服务的模型列表工具
+用于配置和调试第三方代理池中的可用模型
 """
 
 import requests
