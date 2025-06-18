@@ -3,28 +3,65 @@
 
 {% block head %}
 <style>
+    /* 页面加载优化样式 */
+    .page-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.3s ease;
+    }
+
+    .page-loading.fade-out {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* 懒加载占位符 */
+    .lazy-placeholder {
+        background: #f8f9fa;
+        border-radius: 4px;
+        animation: pulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: 0.5;
+        }
+    }
+
     /* 现代化卡片样式 */
     .stat-card {
         border-radius: 12px;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
         border: none;
         height: 100%;
     }
-    
+
     .stat-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
     }
-    
+
     .stat-card .stat-icon {
         font-size: 2.5rem;
         margin-bottom: 1rem;
-        background: rgba(255,255,255,0.2);
+        background: rgba(255, 255, 255, 0.2);
         width: 60px;
         height: 60px;
         display: flex;
@@ -32,18 +69,18 @@
         justify-content: center;
         border-radius: 12px;
     }
-    
+
     .stat-card .stat-value {
         font-size: 2.5rem;
         font-weight: bold;
         margin-bottom: 0.25rem;
     }
-    
+
     .stat-card .stat-label {
         font-size: 1rem;
         opacity: 0.8;
     }
-    
+
     .stat-card::after {
         content: '';
         position: absolute;
@@ -51,64 +88,64 @@
         right: 0;
         width: 100px;
         height: 100px;
-        background: rgba(255,255,255,0.1);
+        background: rgba(255, 255, 255, 0.1);
         border-radius: 50%;
         transform: translate(30%, 30%);
     }
-    
+
     .stat-card.primary {
         background: linear-gradient(135deg, #007bff, #0056b3);
         color: white;
     }
-    
+
     .stat-card.success {
         background: linear-gradient(135deg, #28a745, #1e7e34);
         color: white;
     }
-    
+
     .stat-card.info {
         background: linear-gradient(135deg, #17a2b8, #117a8b);
         color: white;
     }
-    
+
     .stat-card.warning {
         background: linear-gradient(135deg, #ffc107, #d39e00);
         color: white;
     }
-    
+
     /* 表格和卡片样式 */
     .dashboard-card {
         border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         transition: all 0.3s ease;
         border: none;
         margin-bottom: 1.5rem;
     }
-    
+
     .dashboard-card:hover {
-        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
     }
-    
+
     .card-header {
         border-radius: 10px 10px 0 0 !important;
         font-weight: 500;
     }
-    
+
     .table-hover tbody tr:hover {
-        background-color: rgba(0,123,255,0.05);
+        background-color: rgba(0, 123, 255, 0.05);
     }
-    
+
     .btn-action {
         border-radius: 50px;
         padding: 0.25rem 0.75rem;
         font-size: 0.8rem;
         transition: all 0.2s;
     }
-    
+
     .btn-action:hover {
         transform: translateY(-2px);
     }
-    
+
     /* 批量操作按钮样式 */
     .batch-actions {
         background: #f8f9fa;
@@ -116,7 +153,7 @@
         padding: 0.75rem 1rem;
         margin-bottom: 1rem;
     }
-    
+
     .selected-badge {
         background: rgba(13, 110, 253, 0.1);
         color: #0d6efd;
@@ -125,19 +162,174 @@
         font-weight: 500;
         animation: pulse 1.5s infinite;
     }
-    
+
     @keyframes pulse {
-        0% { opacity: 0.8; }
-        50% { opacity: 1; }
-        100% { opacity: 0.8; }
+        0% {
+            opacity: 0.8;
+        }
+
+        50% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: 0.8;
+        }
+    }
+
+    /* 高级搜索样式 */
+    .advanced-search-panel {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .suggestion-item {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s;
+    }
+
+    .suggestion-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+
+    /* 关键词高亮 */
+    .search-highlight {
+        background-color: #fff3cd;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-weight: bold;
+    }
+
+    /* 加载状态 */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* 收藏按钮样式 */
+    .favorite-btn {
+        color: #ffc107;
+        border: none;
+        background: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .favorite-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .favorite-btn.favorited {
+        color: #ff6b6b;
+    }
+
+    /* 搜索历史样式 */
+    .search-history {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .history-item,
+    .hot-search-item {
+        display: inline-block;
+        background: #e9ecef;
+        color: #495057;
+        padding: 0.25rem 0.75rem;
+        margin: 0.25rem;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+
+    .history-item:hover,
+    .hot-search-item:hover {
+        background: #007bff;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    /* 无限滚动样式 */
+    .infinite-scroll-trigger {
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
     }
 </style>
 <script>
-// 图片处理代码已移除
+    // 图片处理代码已移除
 </script>
 {% endblock %}
 
 {% block content %}
+<!-- 页面加载指示器 -->
+<div id="pageLoadingIndicator" class="page-loading">
+    <div class="text-center">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+        <div class="h5">正在加载题库数据...</div>
+        <div class="text-muted">请稍候，正在优化显示效果</div>
+    </div>
+</div>
+
 <div class="container mt-4">
     <!-- 统计卡片 -->
     <div class="row">
@@ -183,57 +375,165 @@
             </div>
         </div>
         <div class="card-body">
-            <!-- 过滤和搜索表单 -->
+            <!-- 搜索历史和热门搜索 -->
+            {% if search_history or hot_searches %}
+            <div class="search-history">
+                {% if search_history %}
+                <div class="mb-2">
+                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>最近搜索:</small>
+                    {% for item in search_history %}
+                    <span class="history-item" onclick="searchWithQuery('{{ item }}')">{{ item }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if hot_searches %}
+                <div>
+                    <small class="text-muted"><i class="bi bi-fire me-1"></i>热门搜索:</small>
+                    {% for item in hot_searches %}
+                    <span class="hot-search-item" onclick="searchWithQuery('{{ item }}')">{{ item }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- 高级搜索表单 -->
             <form id="searchForm" action="{{ url_for('questions.questions') }}" method="GET" class="mb-4">
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="input-group">
-                            <input type="text" class="form-control" name="q" placeholder="搜索题目或答案..." value="{{ search_query }}">
-                            <button class="btn btn-outline-primary" type="submit">搜索</button>
-                            {% if search_query %}
-                            <a href="{{ url_for('questions.questions') }}" class="btn btn-outline-secondary">清除</a>
-                            {% endif %}
+                    <div class="col-md-8">
+                        <div class="position-relative">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="searchInput" name="q"
+                                    placeholder="搜索题目、答案或选项..." value="{{ search_query }}" autocomplete="off">
+                                <button class="btn btn-outline-primary" type="submit" id="searchBtn">
+                                    <i class="bi bi-search"></i> 搜索
+                                </button>
+                                {% if search_query %}
+                                <a href="{{ url_for('questions.questions') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle"></i> 清除
+                                </a>
+                                {% endif %}
+                                <button type="button" class="btn btn-outline-info" id="advancedSearchToggle">
+                                    <i class="bi bi-sliders"></i> 高级
+                                </button>
+                            </div>
+                            <!-- 搜索建议下拉框 -->
+                            <div id="searchSuggestions" class="search-suggestions d-none"></div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex flex-column">
-                            <div class="btn-group mb-2" role="group">
-                                <a href="{{ url_for('questions.questions') }}" class="btn btn-outline-primary {% if not current_type %}active{% endif %}">
-                                    全部 ({{ type_counts.all }})
-                                </a>
-                                <a href="{{ url_for('questions.questions', type='single') }}" class="btn btn-outline-primary {% if current_type == 'single' %}active{% endif %}">
-                                    单选题 ({{ type_counts.single }})
-                                </a>
-                                <a href="{{ url_for('questions.questions', type='multiple') }}" class="btn btn-outline-primary {% if current_type == 'multiple' %}active{% endif %}">
-                                    多选题 ({{ type_counts.multiple }})
-                                </a>
-                                <a href="{{ url_for('questions.questions', type='judgement') }}" class="btn btn-outline-primary {% if current_type == 'judgement' %}active{% endif %}">
-                                    判断题 ({{ type_counts.judgement }})
-                                </a>
-                                <a href="{{ url_for('questions.questions', type='completion') }}" class="btn btn-outline-primary {% if current_type == 'completion' %}active{% endif %}">
-                                    填空题 ({{ type_counts.completion }})
-                                </a>
-                            </div>
-                            <div class="btn-group" role="group">
-                                <a href="{{ url_for('questions.questions', type='short') }}" class="btn btn-outline-primary {% if current_type == 'short' %}active{% endif %}">
-                                    简答题 ({{ type_counts.short }})
-                                </a>
-                                <a href="{{ url_for('questions.questions', type='essay') }}" class="btn btn-outline-primary {% if current_type == 'essay' %}active{% endif %}">
-                                    论述题 ({{ type_counts.essay }})
-                                </a>
-                                <a href="{{ url_for('questions.questions', type='calculation') }}" class="btn btn-outline-primary {% if current_type == 'calculation' %}active{% endif %}">
-                                    计算题 ({{ type_counts.calculation }})
-                                </a>
-                                <a href="{{ url_for('questions.questions', type='analysis') }}" class="btn btn-outline-primary {% if current_type == 'analysis' %}active{% endif %}">
-                                    分析题 ({{ type_counts.analysis }})
-                                </a>
-                                <a href="{{ url_for('questions.questions', type='case') }}" class="btn btn-outline-primary {% if current_type == 'case' %}active{% endif %}">
-                                    案例题 ({{ type_counts.case }})
-                                </a>
+                    <div class="col-md-4">
+                        <div class="d-flex gap-2">
+                            <select class="form-select" name="sort" id="sortSelect">
+                                <option value="created_at" {% if sort_by=='created_at' %}selected{% endif %}>按时间排序
+                                </option>
+                                <option value="view_count" {% if sort_by=='view_count' %}selected{% endif %}>按热度排序
+                                </option>
+                                <option value="question_length" {% if sort_by=='question_length' %}selected{% endif %}>
+                                    按长度排序</option>
+                            </select>
+                            <select class="form-select" name="order" id="orderSelect">
+                                <option value="desc" {% if sort_order=='desc' %}selected{% endif %}>降序</option>
+                                <option value="asc" {% if sort_order=='asc' %}selected{% endif %}>升序</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 高级搜索面板 -->
+                <div id="advancedSearchPanel" class="advanced-search-panel d-none">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">难度等级</label>
+                            <select class="form-select" name="difficulty">
+                                <option value="">全部难度</option>
+                                <option value="easy" {% if difficulty=='easy' %}selected{% endif %}>简单</option>
+                                <option value="medium" {% if difficulty=='medium' %}selected{% endif %}>中等</option>
+                                <option value="hard" {% if difficulty=='hard' %}selected{% endif %}>困难</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">收藏状态</label>
+                            <select class="form-select" name="favorite">
+                                <option value="">全部题目</option>
+                                <option value="true" {% if is_favorite=='true' %}selected{% endif %}>已收藏</option>
+                                <option value="false" {% if is_favorite=='false' %}selected{% endif %}>未收藏</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">每页显示</label>
+                            <select class="form-select" name="per_page">
+                                <option value="10" {% if per_page==10 %}selected{% endif %}>10条</option>
+                                <option value="20" {% if per_page==20 %}selected{% endif %}>20条</option>
+                                <option value="50" {% if per_page==50 %}selected{% endif %}>50条</option>
+                                <option value="100" {% if per_page==100 %}selected{% endif %}>100条</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="button" class="btn btn-outline-secondary" id="clearSearchHistory">
+                                    <i class="bi bi-trash"></i> 清空历史
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- 隐藏字段保持当前状态 -->
+                <input type="hidden" name="type" value="{{ current_type }}">
+            </form>
+
+            <!-- 快速筛选按钮组 -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2">
+                        <div class="btn-group" role="group">
+                            <a href="{{ url_for('questions.questions') }}"
+                                class="btn btn-outline-primary {% if not current_type %}active{% endif %}">
+                                全部 ({{ type_counts.all }})
+                            </a>
+                            <a href="{{ url_for('questions.questions', type='single') }}"
+                                class="btn btn-outline-primary {% if current_type == 'single' %}active{% endif %}">
+                                单选题 ({{ type_counts.single }})
+                            </a>
+                            <a href="{{ url_for('questions.questions', type='multiple') }}"
+                                class="btn btn-outline-primary {% if current_type == 'multiple' %}active{% endif %}">
+                                多选题 ({{ type_counts.multiple }})
+                            </a>
+                            <a href="{{ url_for('questions.questions', type='judgement') }}"
+                                class="btn btn-outline-primary {% if current_type == 'judgement' %}active{% endif %}">
+                                判断题 ({{ type_counts.judgement }})
+                            </a>
+                            <a href="{{ url_for('questions.questions', type='completion') }}"
+                                class="btn btn-outline-primary {% if current_type == 'completion' %}active{% endif %}">
+                                填空题 ({{ type_counts.completion }})
+                            </a>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <a href="{{ url_for('questions.questions', type='short') }}"
+                                class="btn btn-outline-primary {% if current_type == 'short' %}active{% endif %}">
+                                简答题 ({{ type_counts.short }})
+                            </a>
+                            <a href="{{ url_for('questions.questions', type='essay') }}"
+                                class="btn btn-outline-primary {% if current_type == 'essay' %}active{% endif %}">
+                                论述题 ({{ type_counts.essay }})
+                            </a>
+                            <a href="{{ url_for('questions.questions', type='calculation') }}"
+                                class="btn btn-outline-primary {% if current_type == 'calculation' %}active{% endif %}">
+                                计算题 ({{ type_counts.calculation }})
+                            </a>
+                            <a href="{{ url_for('questions.questions', type='analysis') }}"
+                                class="btn btn-outline-primary {% if current_type == 'analysis' %}active{% endif %}">
+                                分析题 ({{ type_counts.analysis }})
+                            </a>
+                            <a href="{{ url_for('questions.questions', type='case') }}"
+                                class="btn btn-outline-primary {% if current_type == 'case' %}active{% endif %}">
+                                案例题 ({{ type_counts.case }})
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
             </form>
             <!-- 批量操作 -->
             <div class="batch-actions mb-3 d-flex align-items-center justify-content-between">
@@ -241,7 +541,15 @@
                     <button id="batchDeleteBtn" class="btn btn-danger btn-action" disabled>
                         <i class="bi bi-trash"></i> 批量删除
                     </button>
-                    <span id="selectedCount" class="ms-2 d-none selected-badge">已选择 <span id="selectedNumber">0</span> 条记录</span>
+                    <button id="batchEditBtn" class="btn btn-warning btn-action" disabled data-bs-toggle="modal"
+                        data-bs-target="#batchEditModal">
+                        <i class="bi bi-pencil-square"></i> 批量编辑
+                    </button>
+                    <button id="batchExportBtn" class="btn btn-success btn-action" disabled>
+                        <i class="bi bi-download"></i> 导出选中
+                    </button>
+                    <span id="selectedCount" class="ms-2 d-none selected-badge">已选择 <span id="selectedNumber">0</span>
+                        条记录</span>
                 </div>
                 <div>
                     <button class="btn btn-outline-primary btn-action" id="refreshBtn">
@@ -263,6 +571,7 @@
                             <th>类型</th>
                             <th>问题</th>
                             <th>答案</th>
+                            <th>统计</th>
                             <th>创建时间</th>
                             <th>操作</th>
                         </tr>
@@ -272,175 +581,250 @@
                         <tr>
                             <td>
                                 <div class="form-check">
-                                    <input class="form-check-input record-checkbox" type="checkbox" value="{{ record.id }}">
+                                    <input class="form-check-input record-checkbox" type="checkbox"
+                                        value="{{ record.id }}">
                                 </div>
                             </td>
                             <td>{{ record.id }}</td>
                             <td>
                                 {% if record.type == 'single' %}
-                                    <span class="badge bg-success">单选题</span>
+                                <span class="badge bg-success">单选题</span>
                                 {% elif record.type == 'multiple' %}
-                                    <span class="badge bg-primary">多选题</span>
+                                <span class="badge bg-primary">多选题</span>
                                 {% elif record.type == 'judgement' %}
-                                    <span class="badge bg-warning">判断题</span>
+                                <span class="badge bg-warning">判断题</span>
                                 {% elif record.type == 'completion' %}
-                                    <span class="badge bg-info">填空题</span>
+                                <span class="badge bg-info">填空题</span>
                                 {% elif record.type == 'short' %}
-                                    <span class="badge bg-dark">简答题</span>
+                                <span class="badge bg-dark">简答题</span>
                                 {% elif record.type == 'essay' %}
-                                    <span class="badge bg-secondary">论述题</span>
+                                <span class="badge bg-secondary">论述题</span>
                                 {% elif record.type == 'calculation' %}
-                                    <span class="badge bg-danger">计算题</span>
+                                <span class="badge bg-danger">计算题</span>
                                 {% elif record.type == 'analysis' %}
-                                    <span class="badge bg-light text-dark">分析题</span>
+                                <span class="badge bg-light text-dark">分析题</span>
                                 {% elif record.type == 'case' %}
-                                    <span class="badge bg-primary" style="background-color: #6f42c1 !important;">案例题</span>
+                                <span class="badge bg-primary" style="background-color: #6f42c1 !important;">案例题</span>
                                 {% elif record.type == 'matching' %}
-                                    <span class="badge bg-info" style="background-color: #20c997 !important;">匹配题</span>
+                                <span class="badge bg-info" style="background-color: #20c997 !important;">匹配题</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">未知</span>
+                                <span class="badge bg-secondary">未知</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="question-content" style="max-width: 300px; max-height: 100px; overflow: auto;" title="{{ record.question }}">
+                                <div class="question-content"
+                                    style="max-width: 300px; max-height: 100px; overflow: auto;"
+                                    title="{{ record.question }}">
+                                    {% if record.question_highlighted %}
+                                    {{ record.question_highlighted|safe }}
+                                    {% else %}
                                     {{ record.question|safe }}
+                                    {% endif %}
                                 </div>
                             </td>
                             <td>
-                                <div class="answer-content" style="max-width: 200px; max-height: 100px; overflow: auto;" title="{{ record.answer }}">
+                                <div class="answer-content" style="max-width: 200px; max-height: 100px; overflow: auto;"
+                                    title="{{ record.answer }}">
+                                    {% if record.answer_highlighted %}
+                                    {{ record.answer_highlighted|safe }}
+                                    {% else %}
                                     {{ record.answer|safe }}
+                                    {% endif %}
                                 </div>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    <div><i class="bi bi-eye"></i> {{ record.view_count or 0 }}</div>
+                                    {% if record.difficulty %}
+                                    <div>
+                                        {% if record.difficulty == 'easy' %}
+                                        <span class="badge bg-success">简单</span>
+                                        {% elif record.difficulty == 'medium' %}
+                                        <span class="badge bg-warning">中等</span>
+                                        {% elif record.difficulty == 'hard' %}
+                                        <span class="badge bg-danger">困难</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </small>
                             </td>
                             <td>{{ record.time }}</td>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-sm btn-outline-info btn-action" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}" aria-label="查看详情">
+                                    <button class="favorite-btn {% if record.is_favorite %}favorited{% endif %}"
+                                        data-question-id="{{ record.id }}"
+                                        title="{% if record.is_favorite %}取消收藏{% else %}收藏题目{% endif %}">
+                                        <i
+                                            class="bi bi-{% if record.is_favorite %}heart-fill{% else %}heart{% endif %}"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info btn-action" data-bs-toggle="modal"
+                                        data-bs-target="#detailModal{{ loop.index }}" aria-label="查看详情"
+                                        onclick="updateViewCount({{ record.id }})">
                                         <i class="bi bi-eye"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-warning btn-action" data-bs-toggle="modal" data-bs-target="#editModal{{ loop.index }}" aria-label="编辑题目">
+                                    <button class="btn btn-sm btn-outline-warning btn-action" data-bs-toggle="modal"
+                                        data-bs-target="#editModal{{ loop.index }}" aria-label="编辑题目">
                                         <i class="bi bi-pencil"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger btn-action delete-record" data-record-id="{{ record.id }}" aria-label="删除题目">
+                                    <button class="btn btn-sm btn-outline-danger btn-action delete-record"
+                                        data-record-id="{{ record.id }}" aria-label="删除题目">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
                             </td>
                         </tr>
-                        
+
                         <!-- 详情模态框 -->
-                        <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" aria-labelledby="detailModalLabel{{ loop.index }}">
-                            <div class="modal-dialog modal-lg modal-dialog-centered">
-                                <div class="modal-content" style="border-radius: 15px; overflow: hidden;">
+                        <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" role="dialog"
+                            aria-labelledby="detailModalLabel{{ loop.index }}" aria-modal="true">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
                                     <div class="modal-header bg-primary text-white">
-                                        <h5 class="modal-title" id="detailModalLabel{{ loop.index }}"><i class="bi bi-info-circle me-2"></i>题目详情</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">
+                                            <i class="bi bi-info-circle me-2"></i>题目详情
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                                            aria-label="关闭"></button>
                                     </div>
                                     <div class="modal-body">
                                         <div class="mb-3">
-                                            <h6>ID:</h6>
-                                            <p>{{ record.id }}</p>
+                                            <h6 id="id-label{{ loop.index }}" class="d-flex align-items-center">
+                                                <i class="bi bi-hash me-2 text-primary"></i>记录ID：
+                                            </h6>
+                                            <pre class="border rounded p-3 bg-light"
+                                                aria-labelledby="id-label{{ loop.index }}">{{ record.id }}</pre>
                                         </div>
                                         <div class="mb-3">
-                                            <h6>问题类型:</h6>
-                                            <p>
+                                            <h6 id="type-label{{ loop.index }}" class="d-flex align-items-center">
+                                                <i class="bi bi-tag me-2 text-primary"></i>问题类型：
+                                            </h6>
+                                            <div class="border rounded p-3 bg-light"
+                                                aria-labelledby="type-label{{ loop.index }}">
                                                 {% if record.type == 'single' %}
-                                                    <span class="badge bg-success">单选题</span>
+                                                <span class="badge bg-success">单选题</span>
                                                 {% elif record.type == 'multiple' %}
-                                                    <span class="badge bg-primary">多选题</span>
+                                                <span class="badge bg-primary">多选题</span>
                                                 {% elif record.type == 'judgement' %}
-                                                    <span class="badge bg-warning">判断题</span>
+                                                <span class="badge bg-warning">判断题</span>
                                                 {% elif record.type == 'completion' %}
-                                                    <span class="badge bg-info">填空题</span>
+                                                <span class="badge bg-info">填空题</span>
                                                 {% elif record.type == 'short' %}
-                                                    <span class="badge bg-dark">简答题</span>
+                                                <span class="badge bg-dark">简答题</span>
                                                 {% elif record.type == 'essay' %}
-                                                    <span class="badge bg-secondary">论述题</span>
+                                                <span class="badge bg-secondary">论述题</span>
                                                 {% elif record.type == 'calculation' %}
-                                                    <span class="badge bg-danger">计算题</span>
+                                                <span class="badge bg-danger">计算题</span>
                                                 {% elif record.type == 'analysis' %}
-                                                    <span class="badge bg-light text-dark">分析题</span>
+                                                <span class="badge bg-light text-dark">分析题</span>
                                                 {% elif record.type == 'case' %}
-                                                    <span class="badge bg-primary" style="background-color: #6f42c1 !important;">案例题</span>
+                                                <span class="badge bg-primary"
+                                                    style="background-color: #6f42c1 !important;">案例题</span>
                                                 {% elif record.type == 'matching' %}
-                                                    <span class="badge bg-info" style="background-color: #20c997 !important;">匹配题</span>
+                                                <span class="badge bg-info"
+                                                    style="background-color: #20c997 !important;">匹配题</span>
                                                 {% else %}
-                                                    <span class="badge bg-secondary">未知</span>
+                                                <span class="badge bg-secondary">未知</span>
                                                 {% endif %}
-                                            </p>
+                                            </div>
                                         </div>
                                         <div class="mb-3">
-                                            <h6 class="text-primary"><i class="bi bi-question-circle me-2"></i>问题内容:</h6>
-                                            <div class="border rounded p-3 bg-light shadow-sm">{{ record.question }}</div>
+                                            <h6 id="question-label{{ loop.index }}" class="d-flex align-items-center">
+                                                <i class="bi bi-question-circle me-2 text-primary"></i>问题内容：
+                                            </h6>
+                                            <pre class="border rounded p-3 bg-light"
+                                                aria-labelledby="question-label{{ loop.index }}">{{ record.question }}</pre>
                                         </div>
                                         {% if record.options %}
                                         <div class="mb-3">
-                                            <h6 class="text-success"><i class="bi bi-list-check me-2"></i>选项:</h6>
-                                            <div class="border rounded p-3 bg-light shadow-sm">{{ record.options }}</div>
+                                            <h6 id="options-label{{ loop.index }}" class="d-flex align-items-center">
+                                                <i class="bi bi-list-check me-2 text-primary"></i>选项内容：
+                                            </h6>
+                                            <pre class="border rounded p-3 bg-light"
+                                                aria-labelledby="options-label{{ loop.index }}">{{ record.options }}</pre>
                                         </div>
                                         {% endif %}
                                         <div class="mb-3">
-                                            <h6 class="text-danger"><i class="bi bi-check2-circle me-2"></i>答案:</h6>
-                                            <div class="border rounded p-3 bg-light shadow-sm">{{ record.answer }}</div>
+                                            <h6 id="answer-label{{ loop.index }}" class="d-flex align-items-center">
+                                                <i class="bi bi-check-circle me-2 text-primary"></i>答案：
+                                            </h6>
+                                            <pre class="border rounded p-3 bg-light"
+                                                aria-labelledby="answer-label{{ loop.index }}">{{ record.answer }}</pre>
                                         </div>
                                         <div class="mb-3">
-                                            <h6>创建时间:</h6>
-                                            <p>{{ record.time }}</p>
+                                            <h6 id="time-label{{ loop.index }}" class="d-flex align-items-center">
+                                                <i class="bi bi-clock me-2 text-primary"></i>创建时间：
+                                            </h6>
+                                            <pre class="border rounded p-3 bg-light"
+                                                aria-labelledby="time-label{{ loop.index }}">{{ record.time }}</pre>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                                            <i class="bi bi-x-circle me-1"></i>关闭
-                                        </button>
+                                        <button type="button" class="btn btn-secondary"
+                                            data-bs-dismiss="modal">关闭</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- 编辑模态框 -->
-                        <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" aria-labelledby="editModalLabel{{ loop.index }}">
-                            <div class="modal-dialog modal-lg modal-dialog-centered">
-                                <div class="modal-content" style="border-radius: 15px; overflow: hidden;">
+                        <div class="modal fade" id="editModal{{ loop.index }}" tabindex="-1" role="dialog"
+                            aria-labelledby="editModalLabel{{ loop.index }}" aria-modal="true">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
                                     <div class="modal-header bg-warning">
-                                        <h5 class="modal-title" id="editModalLabel{{ loop.index }}"><i class="bi bi-pencil-square me-2"></i>编辑题目</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        <h5 class="modal-title" id="editModalLabel{{ loop.index }}">
+                                            <i class="bi bi-pencil-square me-2"></i>编辑题目
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                            aria-label="关闭"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <form id="editForm{{ loop.index }}" onsubmit="return false;">
+                                        <form id="editForm{{ loop.index }}" action="/api/record/update" method="POST">
                                             <input type="hidden" name="record_id" value="{{ record.id }}">
-                                            
+
                                             <div class="mb-3">
-                                                <label for="edit-type-{{ loop.index }}" class="form-label">问题类型:</label>
+                                                <label for="edit-type-{{ loop.index }}" class="form-label">问题类型：</label>
                                                 <select class="form-select" id="edit-type-{{ loop.index }}" name="type">
-                                                    <option value="" {% if not record.type %}selected{% endif %}>未知</option>
-                                                    <option value="single" {% if record.type == 'single' %}selected{% endif %}>单选题</option>
-                                                    <option value="multiple" {% if record.type == 'multiple' %}selected{% endif %}>多选题</option>
-                                                    <option value="judgement" {% if record.type == 'judgement' %}selected{% endif %}>判断题</option>
-                                                    <option value="completion" {% if record.type == 'completion' %}selected{% endif %}>填空题</option>
+                                                    <option value="" {% if not record.type %}selected{% endif %}>未指定
+                                                    </option>
+                                                    <option value="single" {% if record.type=='single' %}selected{%
+                                                        endif %}>单选题</option>
+                                                    <option value="multiple" {% if record.type=='multiple' %}selected{%
+                                                        endif %}>多选题</option>
+                                                    <option value="judgement" {% if record.type=='judgement'
+                                                        %}selected{% endif %}>判断题</option>
+                                                    <option value="completion" {% if record.type=='completion'
+                                                        %}selected{% endif %}>填空题</option>
                                                 </select>
                                             </div>
-                                            
+
                                             <div class="mb-3">
-                                                <label for="edit-question-{{ loop.index }}" class="form-label">问题内容:</label>
-                                                <textarea class="form-control" id="edit-question-{{ loop.index }}" name="question" rows="3">{{ record.question }}</textarea>
+                                                <label for="edit-question-{{ loop.index }}"
+                                                    class="form-label">问题内容：</label>
+                                                <textarea class="form-control" id="edit-question-{{ loop.index }}"
+                                                    name="question" rows="3">{{ record.question }}</textarea>
                                             </div>
-                                            
+
                                             <div class="mb-3">
-                                                <label for="edit-options-{{ loop.index }}" class="form-label">选项内容:</label>
-                                                <textarea class="form-control" id="edit-options-{{ loop.index }}" name="options" rows="3">{{ record.options }}</textarea>
+                                                <label for="edit-options-{{ loop.index }}"
+                                                    class="form-label">选项内容：</label>
+                                                <textarea class="form-control" id="edit-options-{{ loop.index }}"
+                                                    name="options" rows="4">{{ record.options }}</textarea>
                                             </div>
-                                            
+
                                             <div class="mb-3">
-                                                <label for="edit-answer-{{ loop.index }}" class="form-label">答案:</label>
-                                                <textarea class="form-control" id="edit-answer-{{ loop.index }}" name="answer" rows="2">{{ record.answer }}</textarea>
+                                                <label for="edit-answer-{{ loop.index }}" class="form-label">答案：</label>
+                                                <textarea class="form-control" id="edit-answer-{{ loop.index }}"
+                                                    name="answer" rows="2">{{ record.answer }}</textarea>
                                             </div>
                                         </form>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                                            <i class="bi bi-x-circle me-1"></i>取消
-                                        </button>
-                                        <button type="button" class="btn btn-primary save-edit" data-form-id="editForm{{ loop.index }}">
-                                            <i class="bi bi-check-circle me-1"></i>保存
+                                        <button type="button" class="btn btn-secondary"
+                                            data-bs-dismiss="modal">取消</button>
+                                        <button type="button" class="btn btn-primary"
+                                            onclick="submitEditForm('{{ loop.index }}')">
+                                            <i class="bi bi-save me-1"></i>保存更改
                                         </button>
                                     </div>
                                 </div>
@@ -455,24 +839,27 @@
             <nav aria-label="分页导航">
                 <ul class="pagination justify-content-center">
                     <li class="page-item {% if page == 1 %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('questions.questions', page=page-1, per_page=per_page, q=search_query, type=current_type) }}">上一页</a>
+                        <a class="page-link"
+                            href="{{ url_for('questions.questions', page=page-1, per_page=per_page, q=search_query, type=current_type) }}">上一页</a>
                     </li>
-                    
+
                     {% for p in range(1, total_pages + 1) %}
-                        {% if p == page %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ p }}</span>
-                            </li>
-                        {% elif p >= page - 2 and p <= page + 2 %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('questions.questions', page=p, per_page=per_page, q=search_query, type=current_type) }}">{{ p }}</a>
-                            </li>
-                        {% endif %}
-                    {% endfor %}
-                    
-                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('questions.questions', page=page+1, per_page=per_page, q=search_query, type=current_type) }}">下一页</a>
+                    {% if p == page %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ p }}</span>
                     </li>
+                    {% elif p >= page - 2 and p <= page + 2 %} <li class="page-item">
+                        <a class="page-link"
+                            href="{{ url_for('questions.questions', page=p, per_page=per_page, q=search_query, type=current_type) }}">{{
+                            p }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+
+                        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                            <a class="page-link"
+                                href="{{ url_for('questions.questions', page=page+1, per_page=per_page, q=search_query, type=current_type) }}">下一页</a>
+                        </li>
                 </ul>
             </nav>
             {% endif %}
@@ -481,23 +868,31 @@
 </div>
 
 <!-- 导入模态框 -->
-<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel">
-    <div class="modal-dialog">
+<div class="modal fade" id="importModal" tabindex="-1" role="dialog" aria-labelledby="importModalLabel"
+    aria-modal="true">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="importModalLabel">导入题库</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="importModalLabel">
+                    <i class="bi bi-upload me-2"></i>导入题库
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="关闭"></button>
             </div>
             <div class="modal-body">
                 <form id="importForm" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="importFile" class="form-label">选择CSV文件:</label>
+                        <label for="importFile" class="form-label">
+                            <i class="bi bi-file-earmark-text me-2"></i>选择CSV文件：
+                        </label>
                         <input type="file" class="form-control" id="importFile" name="file" accept=".csv" required>
                     </div>
                     <div class="mb-3">
-                        <div class="form-text">
-                            <p>CSV文件格式要求:</p>
-                            <ul>
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-info-circle me-2"></i>CSV文件格式要求：
+                            </h6>
+                            <ul class="mb-0">
                                 <li>第一行必须是标题行: ID,问题,类型,选项,答案,创建时间</li>
                                 <li>类型列可以填写: 单选题,多选题,判断题,填空题,未知</li>
                                 <li>文件编码必须是UTF-8</li>
@@ -508,62 +903,86 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-success" id="importButton">导入</button>
+                <button type="button" class="btn btn-success" id="importButton">
+                    <i class="bi bi-upload me-1"></i>开始导入
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- 批量删除确认模态框 -->
-<div class="modal fade" id="batchDeleteModal" tabindex="-1" aria-labelledby="batchDeleteModalLabel">
-    <div class="modal-dialog">
+<div class="modal fade" id="batchDeleteModal" tabindex="-1" role="dialog" aria-labelledby="batchDeleteModalLabel"
+    aria-modal="true">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="batchDeleteModalLabel">确认批量删除</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="batchDeleteModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>确认批量删除
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="关闭"></button>
             </div>
             <div class="modal-body">
-                <p>确定要删除选中的 <span id="deleteCount">0</span> 条记录吗？此操作不可撤销。</p>
+                <div role="alert" aria-live="assertive">
+                    <p>您确定要删除选中的 <strong><span id="deleteCount">0</span></strong> 条记录吗？</p>
+                    <p class="text-danger"><strong>警告：</strong>此操作无法撤销，记录将从数据库中永久删除！</p>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-danger" id="confirmBatchDelete">确认删除</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="取消">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmBatchDelete" aria-label="确认批量删除">
+                    <i class="bi bi-trash me-1"></i>确认删除
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- 单条记录删除确认模态框 -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel">
-    <div class="modal-dialog">
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel"
+    aria-modal="true">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteModalLabel">确认删除</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>确认删除
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="关闭"></button>
             </div>
             <div class="modal-body">
-                <p>确定要删除这条记录吗？此操作不可撤销。</p>
+                <div role="alert" aria-live="assertive">
+                    <p>您确定要删除这条记录吗？</p>
+                    <p class="text-danger"><strong>警告：</strong>此操作无法撤销，记录将从数据库中永久删除！</p>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" aria-label="取消">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete" aria-label="确认删除">
+                    <i class="bi bi-trash me-1"></i>确认删除
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- 操作结果提示模态框 -->
-<div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel">
-    <div class="modal-dialog">
+<div class="modal fade" id="resultModal" tabindex="-1" role="dialog" aria-labelledby="resultModalLabel"
+    aria-modal="true">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="resultModalLabel">操作结果</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="resultModalLabel">
+                    <i class="bi bi-info-circle me-2"></i>操作结果
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
             </div>
-            <div class="modal-body" id="resultMessage">
+            <div class="modal-body">
+                <p id="resultMessage"></p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" aria-label="确定">确定</button>
             </div>
         </div>
     </div>
@@ -572,401 +991,1093 @@
 <!-- 错误模板页面 -->
 {% if error %}
 <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" data-has-error="true">
-{% else %}
-<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" data-has-error="false">
-{% endif %}
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="errorModalLabel">错误</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                {{ error }}
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+    {% else %}
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" data-has-error="false">
+        {% endif %}
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="errorModalLabel">错误</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {{ error }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 导入成功模态框 -->
-<div class="modal fade" id="importSuccessModal" tabindex="-1" aria-hidden="true">
-    <!-- ... 模态框内容 ... -->
-</div>
-
-<footer class="footer mt-5 py-3 bg-light">
-    <div class="container text-center">
-        <p class="text-muted">Copyright &copy; {{ current_year }} EduBrain AI. All rights reserved.</p>
+    <!-- 导入成功模态框 -->
+    <div class="modal fade" id="importSuccessModal" tabindex="-1" aria-hidden="true">
+        <!-- ... 模态框内容 ... -->
     </div>
-</footer>
 
-<script>
-    {{ super() }}
-    $(document).ready(function() {
-        // 页面加载完成后隐藏可能存在的加载动画
-        hideLoading();
-        
-        // 初始化DataTable
-        $('#question-table').DataTable({
-            responsive: true,
-            paging: false,
-            searching: false,
-            info: false,
-            language: {
-                emptyTable: "没有找到记录",
-                zeroRecords: "没有找到匹配的记录"
+    <footer class="footer mt-5 py-3 bg-light">
+        <div class="container text-center">
+            <p class="text-muted">Copyright &copy; {{ current_year }} EduBrain AI. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // 页面性能监控和优化
+        const pageStartTime = performance.now();
+
+        // 页面加载优化
+        document.addEventListener('DOMContentLoaded', function () {
+            // 隐藏加载指示器
+            setTimeout(() => {
+                const loadingIndicator = document.getElementById('pageLoadingIndicator');
+                if (loadingIndicator) {
+                    loadingIndicator.classList.add('fade-out');
+                    setTimeout(() => {
+                        loadingIndicator.remove();
+                    }, 300);
+                }
+            }, 800);
+
+            // 记录页面加载时间
+            const loadTime = performance.now() - pageStartTime;
+            console.log(`题库页面加载完成，耗时: ${loadTime.toFixed(2)}ms`);
+
+            // 如果加载时间过长，显示提示
+            if (loadTime > 3000) {
+                showToast('页面加载较慢，建议减少每页显示数量', 'warning', 5000);
             }
         });
-        
-        // 如果有错误，显示错误模态框
-        if ($('#errorModal').data('has-error') === true) {
-            var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-            errorModal.show();
+
+        // 通用提示函数
+        function showToast(message, type = 'info', duration = 3000) {
+            // 创建提示元素
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            toast.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            document.body.appendChild(toast);
+
+            // 自动移除
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, duration);
         }
-        
-        // 刷新按钮点击事件
-        $('#refreshBtn').on('click', function() {
-            showLoading();
-            window.location.reload();
-        });
-        
-        // 为所有表单添加验证
-        $('form').each(function() {
-            $(this).on('submit', function(e) {
-                if (!this.checkValidity()) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                } else {
-                    showLoading();
-                }
-                $(this).addClass('was-validated');
-            });
-        });
-        
-        // 编辑表单提交处理
-        $(document).on('click', '.save-edit', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const formId = $(this).data('form-id');
-            const form = $('#' + formId)[0];
-            
-            // 表单验证
-            if (!form.checkValidity()) {
-                $(form).addClass('was-validated');
-                return;
-            }
-            
-            // 显示加载动画
-            showLoading();
-            
-            const recordId = form.querySelector('[name="record_id"]').value;
-            const question = form.querySelector('[name="question"]').value;
-            const type = form.querySelector('[name="type"]').value;
-            const options = form.querySelector('[name="options"]').value;
-            const answer = form.querySelector('[name="answer"]').value;
-            const data = { record_id: recordId, question, type, options, answer };
-            
-            // 关闭模态框
-            const modal = $(this).closest('.modal');
-            modal.modal('hide');
-            
-            // 发送AJAX请求
-            $.ajax({
-                url: '/api/record/update',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-                beforeSend: function() {
-                    showLoading();
-                },
-                complete: function() {
-                    hideLoading();
-                },
-                error: function(xhr, status, error) {
-                    hideLoading();
-                    $('#resultMessage').html('<div class="alert alert-danger">更新失败: ' + error + '</div>');
-                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-                    resultModal.show();
-                },
 
-                success: function(response) {
-                    $('#resultMessage').text(response.message);
-                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-                    resultModal.show();
-                    if (response.success) {
-                        $('#resultModal').on('hidden.bs.modal', function() {
-                            location.reload();
-                        });
-                    }
-                },
-                error: function(xhr) {
-                    let errorMessage = '更新失败';
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        errorMessage = response.message || errorMessage;
-                    } catch (e) {}
-                    $('#resultMessage').text(errorMessage);
-                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-                    resultModal.show();
+        // 高级搜索功能
+        let searchTimeout;
+        let currentPage = 1;
+        let isLoading = false;
+
+        // 搜索建议功能
+        function setupSearchSuggestions() {
+            const searchInput = document.getElementById('searchInput');
+            const suggestionsDiv = document.getElementById('searchSuggestions');
+
+            searchInput.addEventListener('input', function () {
+                const query = this.value.trim();
+
+                clearTimeout(searchTimeout);
+
+                if (query.length < 2) {
+                    suggestionsDiv.classList.add('d-none');
+                    return;
+                }
+
+                searchTimeout = setTimeout(() => {
+                    fetchSearchSuggestions(query);
+                }, 300);
+            });
+
+            // 点击外部关闭建议
+            document.addEventListener('click', function (e) {
+                if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                    suggestionsDiv.classList.add('d-none');
                 }
             });
-        });
-        
-        // 单条记录删除
-        let deleteRecordId = null;
-        $('.delete-record').click(function() {
-            deleteRecordId = $(this).data('record-id');
-            var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-            deleteModal.show();
-        });
-        
-        $('#confirmDelete').click(function() {
-            if (deleteRecordId) {
+        }
+
+        // 获取搜索建议
+        async function fetchSearchSuggestions(query) {
+            try {
+                const response = await fetch(`/api/questions/suggestions?q=${encodeURIComponent(query)}&limit=5`);
+                const data = await response.json();
+
+                if (data.success && data.suggestions.length > 0) {
+                    displaySearchSuggestions(data.suggestions);
+                } else {
+                    document.getElementById('searchSuggestions').classList.add('d-none');
+                }
+            } catch (error) {
+                console.error('获取搜索建议失败:', error);
+            }
+        }
+
+        // 显示搜索建议
+        function displaySearchSuggestions(suggestions) {
+            const suggestionsDiv = document.getElementById('searchSuggestions');
+
+            suggestionsDiv.innerHTML = suggestions.map(suggestion =>
+                `<div class="suggestion-item" onclick="selectSuggestion('${suggestion}')">${suggestion}</div>`
+            ).join('');
+
+            suggestionsDiv.classList.remove('d-none');
+        }
+
+        // 选择搜索建议
+        function selectSuggestion(suggestion) {
+            document.getElementById('searchInput').value = suggestion;
+            document.getElementById('searchSuggestions').classList.add('d-none');
+            document.getElementById('searchForm').submit();
+        }
+
+        // 使用查询词搜索
+        function searchWithQuery(query) {
+            document.getElementById('searchInput').value = query;
+            document.getElementById('searchForm').submit();
+        }
+
+        // 切换高级搜索面板
+        function toggleAdvancedSearch() {
+            const panel = document.getElementById('advancedSearchPanel');
+            const button = document.getElementById('advancedSearchToggle');
+
+            if (panel.classList.contains('d-none')) {
+                panel.classList.remove('d-none');
+                button.innerHTML = '<i class="bi bi-sliders"></i> 收起';
+            } else {
+                panel.classList.add('d-none');
+                button.innerHTML = '<i class="bi bi-sliders"></i> 高级';
+            }
+        }
+
+        // 收藏功能
+        async function toggleFavorite(questionId) {
+            try {
+                const response = await fetch(`/api/questions/${questionId}/favorite`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 更新收藏按钮状态
+                    const favoriteBtn = document.querySelector(`[data-question-id="${questionId}"]`);
+                    const icon = favoriteBtn.querySelector('i');
+
+                    if (data.is_favorite) {
+                        favoriteBtn.classList.add('favorited');
+                        icon.className = 'bi bi-heart-fill';
+                        favoriteBtn.title = '取消收藏';
+                    } else {
+                        favoriteBtn.classList.remove('favorited');
+                        icon.className = 'bi bi-heart';
+                        favoriteBtn.title = '收藏题目';
+                    }
+
+                    showToast(data.message, 'success');
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('切换收藏状态失败:', error);
+                showToast('操作失败，请重试', 'error');
+            }
+        }
+
+        // 更新查看次数
+        async function updateViewCount(questionId) {
+            try {
+                await fetch(`/api/questions/${questionId}/view`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('更新查看次数失败:', error);
+            }
+        }
+
+        // 清空搜索历史
+        async function clearSearchHistory() {
+            try {
+                const response = await fetch('/api/questions/history', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 隐藏搜索历史区域
+                    const historyDiv = document.querySelector('.search-history');
+                    if (historyDiv) {
+                        historyDiv.style.display = 'none';
+                    }
+                    showToast('搜索历史已清空', 'success');
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('清空搜索历史失败:', error);
+                showToast('操作失败，请重试', 'error');
+            }
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'info') {
+            // 创建提示元素
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            toast.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            document.body.appendChild(toast);
+
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        }
+
+        // 提交编辑表单
+        function submitEditForm(index) {
+            const form = document.getElementById(`editForm${index}`);
+            const formData = new FormData(form);
+
+            // 显示加载状态
+            const submitBtn = document.querySelector(`[onclick="submitEditForm('${index}')"]`);
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>保存中...';
+            submitBtn.disabled = true;
+
+            fetch('/api/record/update', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // 恢复按钮状态
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+
+                    // 关闭编辑模态框
+                    const editModal = bootstrap.Modal.getInstance(document.getElementById(`editModal${index}`));
+                    editModal.hide();
+
+                    // 显示结果
+                    document.getElementById('resultMessage').textContent = data.message;
+                    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                    resultModal.show();
+
+                    if (data.success) {
+                        // 成功后刷新页面
+                        document.getElementById('resultModal').addEventListener('hidden.bs.modal', function () {
+                            location.reload();
+                        }, { once: true });
+                    }
+                })
+                .catch(error => {
+                    console.error('编辑失败:', error);
+
+                    // 恢复按钮状态
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+
+                    // 关闭编辑模态框
+                    const editModal = bootstrap.Modal.getInstance(document.getElementById(`editModal${index}`));
+                    editModal.hide();
+
+                    // 显示错误信息
+                    document.getElementById('resultMessage').textContent = '编辑失败，请重试';
+                    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                    resultModal.show();
+                });
+        }
+
+        $(document).ready(function () {
+            // 页面加载完成后隐藏可能存在的加载动画
+            hideLoading();
+
+            // 初始化搜索建议功能
+            setupSearchSuggestions();
+
+            // 绑定高级搜索切换按钮
+            document.getElementById('advancedSearchToggle').addEventListener('click', toggleAdvancedSearch);
+
+            // 绑定清空搜索历史按钮
+            const clearHistoryBtn = document.getElementById('clearSearchHistory');
+            if (clearHistoryBtn) {
+                clearHistoryBtn.addEventListener('click', clearSearchHistory);
+            }
+
+            // 绑定收藏按钮
+            document.querySelectorAll('.favorite-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const questionId = this.getAttribute('data-question-id');
+                    toggleFavorite(questionId);
+                });
+            });
+
+            // 绑定排序和筛选变化事件
+            document.getElementById('sortSelect').addEventListener('change', function () {
+                document.getElementById('searchForm').submit();
+            });
+
+            document.getElementById('orderSelect').addEventListener('change', function () {
+                document.getElementById('searchForm').submit();
+            });
+
+            // 初始化DataTable
+            $('#question-table').DataTable({
+                responsive: true,
+                paging: false,
+                searching: false,
+                info: false,
+                language: {
+                    emptyTable: "没有找到记录",
+                    zeroRecords: "没有找到匹配的记录"
+                }
+            });
+
+            // 如果有错误，显示错误模态框
+            if ($('#errorModal').data('has-error') === true) {
+                var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                errorModal.show();
+            }
+
+            // 刷新按钮点击事件
+            $('#refreshBtn').on('click', function () {
+                showLoading();
+                window.location.reload();
+            });
+
+            // 为所有表单添加验证
+            $('form').each(function () {
+                $(this).on('submit', function (e) {
+                    if (!this.checkValidity()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    } else {
+                        showLoading();
+                    }
+                    $(this).addClass('was-validated');
+                });
+            });
+
+            // 编辑表单提交处理
+            $(document).on('click', '.save-edit', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const formId = $(this).data('form-id');
+                const form = $('#' + formId)[0];
+
+                // 表单验证
+                if (!form.checkValidity()) {
+                    $(form).addClass('was-validated');
+                    return;
+                }
+
+                // 显示加载动画
+                showLoading();
+
+                const recordId = form.querySelector('[name="record_id"]').value;
+                const question = form.querySelector('[name="question"]').value;
+                const type = form.querySelector('[name="type"]').value;
+                const options = form.querySelector('[name="options"]').value;
+                const answer = form.querySelector('[name="answer"]').value;
+                const data = { record_id: recordId, question, type, options, answer };
+
+                // 关闭模态框
+                const modal = $(this).closest('.modal');
+                modal.modal('hide');
+
+                // 发送AJAX请求
                 $.ajax({
-                    url: '/api/record/delete',
+                    url: '/api/record/update',
                     type: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({
-                        record_id: deleteRecordId
-                    }),
-                    success: function(response) {
-                        // 关闭删除确认框
-                        $('#deleteModal').modal('hide');
-                        
-                        // 显示结果
+                    data: JSON.stringify(data),
+                    beforeSend: function () {
+                        showLoading();
+                    },
+                    complete: function () {
+                        hideLoading();
+                    },
+                    error: function (xhr, status, error) {
+                        hideLoading();
+                        $('#resultMessage').html('<div class="alert alert-danger">更新失败: ' + error + '</div>');
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                    },
+
+                    success: function (response) {
                         $('#resultMessage').text(response.message);
                         var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
                         resultModal.show();
-                        
-                        // 成功后刷新页面
                         if (response.success) {
-                            $('#resultModal').on('hidden.bs.modal', function() {
+                            $('#resultModal').on('hidden.bs.modal', function () {
                                 location.reload();
                             });
                         }
                     },
-                    error: function(xhr) {
-                        // 关闭删除确认框
-                        $('#deleteModal').modal('hide');
-                        
-                        // 显示错误
-                        let errorMessage = '删除失败';
+                    error: function (xhr) {
+                        let errorMessage = '更新失败';
                         try {
                             const response = JSON.parse(xhr.responseText);
                             errorMessage = response.message || errorMessage;
-                        } catch (e) {}
-                        
+                        } catch (e) { }
                         $('#resultMessage').text(errorMessage);
                         var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
                         resultModal.show();
                     }
                 });
-            }
-        });
-        
-        // 批量删除
-        $('#selectAll').on('change', function() {
-            $('.record-checkbox').prop('checked', $(this).prop('checked'));
-            updateSelectedCount();
-        });
-        
-        $('.record-checkbox').on('change', function() {
-            updateSelectedCount();
-            
-            // 如果不是所有的都被选中，取消全选框的选中状态
-            if ($('.record-checkbox:checked').length !== $('.record-checkbox').length) {
-                $('#selectAll').prop('checked', false);
-            } else if ($('.record-checkbox:checked').length === $('.record-checkbox').length) {
-                $('#selectAll').prop('checked', true);
-            }
-        });
-        
-        function updateSelectedCount() {
-            const selectedCount = $('.record-checkbox:checked').length;
-            $('#selectedNumber').text(selectedCount);
-            
-            if (selectedCount > 0) {
-                $('#selectedCount').removeClass('d-none');
-                $('#batchDeleteBtn').prop('disabled', false);
-            } else {
-                $('#selectedCount').addClass('d-none');
-                $('#batchDeleteBtn').prop('disabled', true);
-            }
-        }
-        
-        $('#batchDeleteBtn').on('click', function() {
-            const selectedCount = $('.record-checkbox:checked').length;
-            $('#deleteCount').text(selectedCount);
-            
-            var batchDeleteModal = new bootstrap.Modal(document.getElementById('batchDeleteModal'));
-            batchDeleteModal.show();
-        });
-        
-        $('#confirmBatchDelete').on('click', function() {
-            const selectedIds = [];
-            $('.record-checkbox:checked').each(function() {
-                selectedIds.push($(this).val());
             });
-            
-            if (selectedIds.length === 0) return;
-            
-            showLoading();
-            $.ajax({
-                url: '/api/record/batch-delete',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ record_ids: selectedIds }),
-                success: function(response) {
-                    hideLoading();
-                    $('#batchDeleteModal').modal('hide');
-                    $('#resultMessage').html('<div class="alert alert-' + (response.status === 'success' ? 'success' : 'danger') + '">' + response.message + '</div>');
-                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-                    resultModal.show();
-                    if (response.status === 'success') {
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 1500);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    hideLoading();
-                    $('#batchDeleteModal').modal('hide');
-                    $('#resultMessage').html('<div class="alert alert-danger">批量删除失败: ' + error + '</div>');
-                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-                    resultModal.show();
+
+            // 单条记录删除
+            let deleteRecordId = null;
+            $('.delete-record').click(function () {
+                deleteRecordId = $(this).data('record-id');
+                var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                deleteModal.show();
+            });
+
+            $('#confirmDelete').click(function () {
+                if (deleteRecordId) {
+                    $.ajax({
+                        url: '/api/record/delete',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            record_id: deleteRecordId
+                        }),
+                        success: function (response) {
+                            // 关闭删除确认框
+                            $('#deleteModal').modal('hide');
+
+                            // 显示结果
+                            $('#resultMessage').text(response.message);
+                            var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                            resultModal.show();
+
+                            // 成功后刷新页面
+                            if (response.success) {
+                                $('#resultModal').on('hidden.bs.modal', function () {
+                                    location.reload();
+                                });
+                            }
+                        },
+                        error: function (xhr) {
+                            // 关闭删除确认框
+                            $('#deleteModal').modal('hide');
+
+                            // 显示错误
+                            let errorMessage = '删除失败';
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                errorMessage = response.message || errorMessage;
+                            } catch (e) { }
+
+                            $('#resultMessage').text(errorMessage);
+                            var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                            resultModal.show();
+                        }
+                    });
                 }
             });
-        });
-        
-        // 导入题库
-        $('#importButton').on('click', function() {
-            var fileInput = $('#importFile')[0];
-            if (!fileInput.files.length) {
-                $('#importFile').addClass('is-invalid');
-                return;
-            }
-            
-            var formData = new FormData($('#importForm')[0]);
-            showLoading();
-            $.ajax({
-                url: '/api/questions/import',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    hideLoading();
-                    $('#importModal').modal('hide');
-                    $('#resultMessage').html('<div class="alert alert-' + (response.status === 'success' ? 'success' : 'danger') + '">' + response.message + '</div>');
-                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-                    resultModal.show();
-                    if (response.status === 'success') {
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 1500);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    hideLoading();
-                    $('#importModal').modal('hide');
-                    $('#resultMessage').html('<div class="alert alert-danger">导入失败: ' + error + '</div>');
-                    var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-                    resultModal.show();
+
+            // 批量删除
+            $('#selectAll').on('change', function () {
+                $('.record-checkbox').prop('checked', $(this).prop('checked'));
+                updateSelectedCount();
+            });
+
+            $('.record-checkbox').on('change', function () {
+                updateSelectedCount();
+
+                // 如果不是所有的都被选中，取消全选框的选中状态
+                if ($('.record-checkbox:checked').length !== $('.record-checkbox').length) {
+                    $('#selectAll').prop('checked', false);
+                } else if ($('.record-checkbox:checked').length === $('.record-checkbox').length) {
+                    $('#selectAll').prop('checked', true);
                 }
             });
-        });
-        
-        // 为模态框添加动画效果
-        $('.modal').on('show.bs.modal', function() {
-            $(this).find('.modal-content').css('transform', 'scale(0.8)');
-            setTimeout(() => {
-                $(this).find('.modal-content').css('transform', 'scale(1)');
-            }, 50);
-        });
-        
-        // 为表单输入添加实时验证
-        $('textarea, input').on('input', function() {
-            if ($(this).val().trim() === '' && $(this).prop('required')) {
-                $(this).removeClass('is-valid').addClass('is-invalid');
-            } else {
-                $(this).removeClass('is-invalid').addClass('is-valid');
+
+            function updateSelectedCount() {
+                const selectedCount = $('.record-checkbox:checked').length;
+                $('#selectedNumber').text(selectedCount);
+
+                if (selectedCount > 0) {
+                    $('#selectedCount').removeClass('d-none');
+                    $('#batchDeleteBtn').prop('disabled', false);
+                } else {
+                    $('#selectedCount').addClass('d-none');
+                    $('#batchDeleteBtn').prop('disabled', true);
+                }
             }
-        });
-        
-        // 显示加载动画
-        function showLoading() {
-            if (!document.getElementById('loadingOverlay')) {
-                var loadingHTML = `
+
+            $('#batchDeleteBtn').on('click', function () {
+                const selectedCount = $('.record-checkbox:checked').length;
+                $('#deleteCount').text(selectedCount);
+
+                var batchDeleteModal = new bootstrap.Modal(document.getElementById('batchDeleteModal'));
+                batchDeleteModal.show();
+            });
+
+            $('#confirmBatchDelete').on('click', function () {
+                const selectedIds = [];
+                $('.record-checkbox:checked').each(function () {
+                    selectedIds.push($(this).val());
+                });
+
+                if (selectedIds.length === 0) return;
+
+                showLoading();
+                $.ajax({
+                    url: '/api/record/batch-delete',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ record_ids: selectedIds }),
+                    success: function (response) {
+                        hideLoading();
+                        $('#batchDeleteModal').modal('hide');
+                        $('#resultMessage').html('<div class="alert alert-' + (response.status === 'success' ? 'success' : 'danger') + '">' + response.message + '</div>');
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                        if (response.status === 'success') {
+                            setTimeout(function () {
+                                window.location.reload();
+                            }, 1500);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        hideLoading();
+                        $('#batchDeleteModal').modal('hide');
+                        $('#resultMessage').html('<div class="alert alert-danger">批量删除失败: ' + error + '</div>');
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                    }
+                });
+            });
+
+            // 导入题库
+            $('#importButton').on('click', function () {
+                var fileInput = $('#importFile')[0];
+                if (!fileInput.files.length) {
+                    $('#importFile').addClass('is-invalid');
+                    return;
+                }
+
+                var formData = new FormData($('#importForm')[0]);
+                showLoading();
+                $.ajax({
+                    url: '/api/questions/import',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        hideLoading();
+                        $('#importModal').modal('hide');
+                        $('#resultMessage').html('<div class="alert alert-' + (response.status === 'success' ? 'success' : 'danger') + '">' + response.message + '</div>');
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                        if (response.status === 'success') {
+                            setTimeout(function () {
+                                window.location.reload();
+                            }, 1500);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        hideLoading();
+                        $('#importModal').modal('hide');
+                        $('#resultMessage').html('<div class="alert alert-danger">导入失败: ' + error + '</div>');
+                        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        resultModal.show();
+                    }
+                });
+            });
+
+            // 为模态框添加动画效果
+            $('.modal').on('show.bs.modal', function () {
+                $(this).find('.modal-content').css('transform', 'scale(0.8)');
+                setTimeout(() => {
+                    $(this).find('.modal-content').css('transform', 'scale(1)');
+                }, 50);
+            });
+
+            // 为表单输入添加实时验证
+            $('textarea, input').on('input', function () {
+                if ($(this).val().trim() === '' && $(this).prop('required')) {
+                    $(this).removeClass('is-valid').addClass('is-invalid');
+                } else {
+                    $(this).removeClass('is-invalid').addClass('is-valid');
+                }
+            });
+
+            // 显示加载动画
+            function showLoading() {
+                if (!document.getElementById('loadingOverlay')) {
+                    var loadingHTML = `
                     <div id="loadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 9999; display: flex; justify-content: center; align-items: center;">
                         <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
                             <span class="visually-hidden">加载中...</span>
                         </div>
                     </div>
                 `;
-                document.body.insertAdjacentHTML('beforeend', loadingHTML);
-            } else {
-                document.getElementById('loadingOverlay').style.display = 'flex';
+                    document.body.insertAdjacentHTML('beforeend', loadingHTML);
+                } else {
+                    document.getElementById('loadingOverlay').style.display = 'flex';
+                }
             }
-        }
-        
-        // 隐藏加载动画
-        function hideLoading() {
-            var overlay = document.getElementById('loadingOverlay');
-            if (overlay) {
-                overlay.style.display = 'none';
+
+            // 隐藏加载动画
+            function hideLoading() {
+                var overlay = document.getElementById('loadingOverlay');
+                if (overlay) {
+                    overlay.style.display = 'none';
+                }
             }
-        }
-        
-        // 页面刷新函数
-        function refreshPage() {
-            showLoading();
-            window.location.reload();
-        }
-    });
-    
-    // 题目转圈功能安全修复
-    // 为所有与题目转圈相关的按钮添加安全检查
-    document.addEventListener('DOMContentLoaded', function() {
-        // 查找所有可能与题目转圈相关的按钮
-        const rotateButtons = document.querySelectorAll('.rotate-question-btn, .swap-question-btn, [data-action="rotate"]');
-        
-        if (rotateButtons.length > 0) {
-            // 为每个按钮添加安全的点击事件处理
-            rotateButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    // 获取相关元素，添加安全检查
-                    const questionId = this.dataset.questionId || this.getAttribute('data-question-id');
-                    const targetId = this.dataset.targetId || this.getAttribute('data-target-id');
-                    
-                    const questionElement = questionId ? document.getElementById(questionId) : null;
-                    const targetElement = targetId ? document.getElementById(targetId) : null;
-                    
-                    // 安全检查：确保元素存在再访问其属性
-                    if (!questionElement || !targetElement) {
-                        console.error('题目转圈功能：找不到必要的元素');
-                        return; // 提前退出函数，防止错误
-                    }
-                    
-                    // 安全地获取值
-                    const questionValue = questionElement.value || '';
-                    const targetValue = targetElement.value || '';
-                    
-                    // 执行交换操作
-                    try {
-                        questionElement.value = targetValue;
-                        targetElement.value = questionValue;
-                        console.log('题目转圈完成');
-                    } catch (error) {
-                        console.error('题目转圈操作失败:', error);
-                    }
+
+            // 页面刷新函数
+            function refreshPage() {
+                showLoading();
+                window.location.reload();
+            }
+        });
+
+        // 题目转圈功能安全修复
+        // 为所有与题目转圈相关的按钮添加安全检查
+        document.addEventListener('DOMContentLoaded', function () {
+            // 查找所有可能与题目转圈相关的按钮
+            const rotateButtons = document.querySelectorAll('.rotate-question-btn, .swap-question-btn, [data-action="rotate"]');
+
+            if (rotateButtons.length > 0) {
+                // 为每个按钮添加安全的点击事件处理
+                rotateButtons.forEach(button => {
+                    button.addEventListener('click', function (e) {
+                        e.preventDefault();
+
+                        // 获取相关元素，添加安全检查
+                        const questionId = this.dataset.questionId || this.getAttribute('data-question-id');
+                        const targetId = this.dataset.targetId || this.getAttribute('data-target-id');
+
+                        const questionElement = questionId ? document.getElementById(questionId) : null;
+                        const targetElement = targetId ? document.getElementById(targetId) : null;
+
+                        // 安全检查：确保元素存在再访问其属性
+                        if (!questionElement || !targetElement) {
+                            console.error('题目转圈功能：找不到必要的元素');
+                            return; // 提前退出函数，防止错误
+                        }
+
+                        // 安全地获取值
+                        const questionValue = questionElement.value || '';
+                        const targetValue = targetElement.value || '';
+
+                        // 执行交换操作
+                        try {
+                            questionElement.value = targetValue;
+                            targetElement.value = questionValue;
+                            console.log('题目转圈完成');
+                        } catch (error) {
+                            console.error('题目转圈操作失败:', error);
+                        }
+                    });
                 });
+            }
+        });
+
+        // 批量编辑功能
+        function updateSelectedCount() {
+            const selectedCount = $('.record-checkbox:checked').length;
+            $('#selectedNumber').text(selectedCount);
+
+            if (selectedCount > 0) {
+                $('#selectedCount').removeClass('d-none');
+                $('#batchDeleteBtn, #batchEditBtn, #batchExportBtn').prop('disabled', false);
+            } else {
+                $('#selectedCount').addClass('d-none');
+                $('#batchDeleteBtn, #batchEditBtn, #batchExportBtn').prop('disabled', true);
+            }
+        }
+
+        // 批量编辑模态框控制
+        document.addEventListener('DOMContentLoaded', function () {
+            // 复选框控制表单字段
+            const checkboxes = ['updateType', 'updateDifficulty', 'updateTags', 'updateCategory', 'updateNotes'];
+
+            checkboxes.forEach(checkboxId => {
+                const checkbox = document.getElementById(checkboxId);
+                const fieldId = checkboxId.replace('update', 'batch');
+                const field = document.getElementById(fieldId);
+
+                if (checkbox && field) {
+                    checkbox.addEventListener('change', function () {
+                        field.disabled = !this.checked;
+                        if (!this.checked) {
+                            field.value = '';
+                        }
+                        updateBatchEditPreview();
+                    });
+                }
+            });
+
+            // 表单字段变化时更新预览
+            ['batchType', 'batchDifficulty', 'batchTags', 'batchCategory', 'batchNotes'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.addEventListener('input', updateBatchEditPreview);
+                    field.addEventListener('change', updateBatchEditPreview);
+                }
+            });
+        });
+
+        // 更新批量编辑预览
+        function updateBatchEditPreview() {
+            const preview = document.getElementById('batchEditPreview');
+            const previewContent = document.getElementById('previewContent');
+
+            const changes = [];
+
+            if (document.getElementById('updateType').checked) {
+                const type = document.getElementById('batchType').value;
+                if (type) {
+                    const typeNames = {
+                        'single': '单选题', 'multiple': '多选题', 'judgement': '判断题',
+                        'completion': '填空题', 'short': '简答题', 'essay': '论述题',
+                        'calculation': '计算题', 'analysis': '分析题', 'case': '案例题', 'matching': '匹配题'
+                    };
+                    changes.push(`题目类型 → ${typeNames[type] || type}`);
+                }
+            }
+
+            if (document.getElementById('updateDifficulty').checked) {
+                const difficulty = document.getElementById('batchDifficulty').value;
+                if (difficulty) {
+                    const difficultyNames = { 'easy': '简单', 'medium': '中等', 'hard': '困难' };
+                    changes.push(`难度等级 → ${difficultyNames[difficulty] || difficulty}`);
+                }
+            }
+
+            if (document.getElementById('updateTags').checked) {
+                const tags = document.getElementById('batchTags').value;
+                if (tags) changes.push(`标签 → ${tags}`);
+            }
+
+            if (document.getElementById('updateCategory').checked) {
+                const category = document.getElementById('batchCategory').value;
+                if (category) changes.push(`分类 → ${category}`);
+            }
+
+            if (document.getElementById('updateNotes').checked) {
+                const notes = document.getElementById('batchNotes').value;
+                if (notes) changes.push(`备注 → ${notes.substring(0, 50)}${notes.length > 50 ? '...' : ''}`);
+            }
+
+            if (changes.length > 0) {
+                previewContent.innerHTML = changes.map(change => `<div>• ${change}</div>`).join('');
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        // 确认批量编辑
+        const confirmBatchEditBtn = document.getElementById('confirmBatchEdit');
+        if (confirmBatchEditBtn) {
+            confirmBatchEditBtn.addEventListener('click', function () {
+                const selectedIds = Array.from(document.querySelectorAll('.record-checkbox:checked')).map(cb => cb.value);
+
+                if (selectedIds.length === 0) {
+                    showToast('请先选择要编辑的题目', 'error');
+                    return;
+                }
+
+                const updates = {};
+
+                if (document.getElementById('updateType').checked) {
+                    updates.type = document.getElementById('batchType').value;
+                }
+                if (document.getElementById('updateDifficulty').checked) {
+                    updates.difficulty = document.getElementById('batchDifficulty').value;
+                }
+                if (document.getElementById('updateTags').checked) {
+                    updates.tags = document.getElementById('batchTags').value;
+                }
+                if (document.getElementById('updateCategory').checked) {
+                    updates.category = document.getElementById('batchCategory').value;
+                }
+                if (document.getElementById('updateNotes').checked) {
+                    updates.notes = document.getElementById('batchNotes').value;
+                }
+
+                if (Object.keys(updates).length === 0) {
+                    showToast('请至少选择一个要更新的字段', 'error');
+                    return;
+                }
+
+                // 发送批量编辑请求
+                fetch('/api/questions/batch-edit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question_ids: selectedIds,
+                        updates: updates
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('batchEditModal'));
+                        modal.hide();
+
+                        if (data.success) {
+                            showToast(`成功更新 ${data.updated_count} 个题目`, 'success');
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            showToast(data.message || '批量编辑失败', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('批量编辑失败:', error);
+                        showToast('批量编辑失败，请重试', 'error');
+                    });
             });
         }
-    });
-</script>
-{% endblock %}
+
+        // 批量导出功能
+        const batchExportBtn = document.getElementById('batchExportBtn');
+        if (batchExportBtn) {
+            batchExportBtn.addEventListener('click', function () {
+                const selectedIds = Array.from(document.querySelectorAll('.record-checkbox:checked')).map(cb => cb.value);
+
+                if (selectedIds.length === 0) {
+                    showToast('请先选择要导出的题目', 'error');
+                    return;
+                }
+
+                // 创建表单并提交
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/api/questions/export-selected';
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'question_ids';
+                input.value = JSON.stringify(selectedIds);
+
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+
+                showToast(`正在导出 ${selectedIds.length} 个题目...`, 'info');
+            });
+        }
+
+        // 初始化所有功能
+        function initializeAllFeatures() {
+            try {
+                // 初始化搜索建议
+                setupSearchSuggestions();
+
+                // 初始化批量操作
+                initializeBatchOperations();
+
+                // 初始化其他功能
+                console.log('所有功能初始化完成');
+            } catch (error) {
+                console.error('功能初始化失败:', error);
+            }
+        }
+
+        // 批量操作初始化
+        function initializeBatchOperations() {
+            // 全选功能
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function () {
+                    const checkboxes = document.querySelectorAll('.record-checkbox');
+                    checkboxes.forEach(cb => cb.checked = this.checked);
+                    updateBatchButtons();
+                });
+            }
+
+            // 单个复选框变化
+            document.addEventListener('change', function (e) {
+                if (e.target.classList.contains('record-checkbox')) {
+                    updateBatchButtons();
+                }
+            });
+        }
+
+        // 更新批量操作按钮状态
+        function updateBatchButtons() {
+            const selectedCheckboxes = document.querySelectorAll('.record-checkbox:checked');
+            const count = selectedCheckboxes.length;
+
+            const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+            const batchEditBtn = document.getElementById('batchEditBtn');
+            const batchExportBtn = document.getElementById('batchExportBtn');
+            const selectedCount = document.getElementById('selectedCount');
+            const selectedNumber = document.getElementById('selectedNumber');
+
+            if (batchDeleteBtn) batchDeleteBtn.disabled = count === 0;
+            if (batchEditBtn) batchEditBtn.disabled = count === 0;
+            if (batchExportBtn) batchExportBtn.disabled = count === 0;
+
+            if (selectedCount && selectedNumber) {
+                if (count > 0) {
+                    selectedCount.classList.remove('d-none');
+                    selectedNumber.textContent = count;
+                } else {
+                    selectedCount.classList.add('d-none');
+                }
+            }
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeAllFeatures();
+        });
+
+    </script>
+
+    <!-- 批量编辑模态框 -->
+    <div class="modal fade" id="batchEditModal" tabindex="-1" role="dialog" aria-labelledby="batchEditModalLabel"
+        aria-modal="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title" id="batchEditModalLabel">
+                        <i class="bi bi-pencil-square me-2"></i>批量编辑题目
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-info-circle me-2"></i>批量编辑说明：
+                        </h6>
+                        <ul class="mb-0">
+                            <li>只有选中的字段会被更新，未选中的字段保持原值</li>
+                            <li>批量操作将应用到所有选中的题目</li>
+                            <li>请谨慎操作，批量修改后无法撤销</li>
+                        </ul>
+                    </div>
+
+                    <form id="batchEditForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="updateType">
+                                    <label class="form-check-label" for="updateType">
+                                        <strong>更新题目类型</strong>
+                                    </label>
+                                </div>
+                                <select class="form-select" id="batchType" name="type" disabled>
+                                    <option value="">请选择题目类型</option>
+                                    <option value="single">单选题</option>
+                                    <option value="multiple">多选题</option>
+                                    <option value="judgement">判断题</option>
+                                    <option value="completion">填空题</option>
+                                    <option value="short">简答题</option>
+                                    <option value="essay">论述题</option>
+                                    <option value="calculation">计算题</option>
+                                    <option value="analysis">分析题</option>
+                                    <option value="case">案例题</option>
+                                    <option value="matching">匹配题</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="updateDifficulty">
+                                    <label class="form-check-label" for="updateDifficulty">
+                                        <strong>更新难度等级</strong>
+                                    </label>
+                                </div>
+                                <select class="form-select" id="batchDifficulty" name="difficulty" disabled>
+                                    <option value="">请选择难度等级</option>
+                                    <option value="easy">简单</option>
+                                    <option value="medium">中等</option>
+                                    <option value="hard">困难</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="updateTags">
+                                    <label class="form-check-label" for="updateTags">
+                                        <strong>添加标签</strong>
+                                    </label>
+                                </div>
+                                <input type="text" class="form-control" id="batchTags" name="tags"
+                                    placeholder="输入标签，用逗号分隔" disabled>
+                                <div class="form-text">例如：数学,几何,基础知识</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="updateCategory">
+                                    <label class="form-check-label" for="updateCategory">
+                                        <strong>更新分类</strong>
+                                    </label>
+                                </div>
+                                <input type="text" class="form-control" id="batchCategory" name="category"
+                                    placeholder="输入分类名称" disabled>
+                                <div class="form-text">例如：高等数学、计算机基础</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="updateNotes">
+                                <label class="form-check-label" for="updateNotes">
+                                    <strong>添加备注</strong>
+                                </label>
+                            </div>
+                            <textarea class="form-control" id="batchNotes" name="notes" rows="3" placeholder="输入备注信息"
+                                disabled></textarea>
+                        </div>
+                    </form>
+
+                    <div id="batchEditPreview" class="mt-3" style="display: none;">
+                        <h6><i class="bi bi-eye me-2"></i>预览更改：</h6>
+                        <div class="alert alert-secondary">
+                            <div id="previewContent"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-warning" id="confirmBatchEdit">
+                        <i class="bi bi-save me-1"></i>确认批量编辑
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}

@@ -1,6 +1,6 @@
 flask
 flask-cors
-openai
+httpx
 gunicorn
 requests
 pymysql
@@ -11,3 +11,6 @@ markdown
 pandas
 tabulate
 apscheduler
+psutil
+schedule
+aiohttp

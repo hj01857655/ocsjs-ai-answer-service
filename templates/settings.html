@@ -225,8 +225,9 @@
                         <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
 
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="openai-tab" data-bs-toggle="tab" data-bs-target="#openai"
-                                    type="button" role="tab">OpenAI配置</button>
+                                <button class="nav-link active" id="third-party-api-tab" data-bs-toggle="tab"
+                                    data-bs-target="#third-party-api" type="button" role="tab"
+                                    aria-selected="true">第三方API配置</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="cache-tab" data-bs-toggle="tab" data-bs-target="#cache"
@@ -257,39 +258,66 @@
                         <div class="tab-content p-3 border border-top-0 rounded-bottom" id="settingsTabContent">
 
 
-                            <!-- OpenAI配置 -->
-                            <div class="tab-pane fade" id="openai" role="tabpanel" aria-labelledby="openai-tab">
-                                <h5 class="mb-3">OpenAI API配置</h5>
-                                <div class="mb-3">
-                                    <label for="openai_api_key" class="form-label">API密钥</label>
-                                    <input type="password" class="form-control" id="openai_api_key"
-                                        name="openai_api_key" value="{{ config.openai.api_key }}" readonly>
+                            <!-- 第三方API代理池配置 -->
+                            <div class="tab-pane fade show active" id="third-party-api" role="tabpanel"
+                                aria-labelledby="third-party-api-tab">
+                                <h5 class="mb-3">第三方API代理池配置</h5>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>代理池模式：</strong>系统现在支持多个第三方API代理服务，提供负载均衡和故障转移功能。
+                                    要修改代理池配置，请直接编辑 <code>config.json</code> 文件中的 <code>third_party_apis</code> 数组。
                                 </div>
-                                <div class="mb-3">
-                                    <label for="openai_session" class="form-label">Session</label>
-                                    <input type="text" class="form-control" id="openai_session" name="openai_session"
-                                        value="{{ config.openai.session }}" readonly>
+
+                                {% if config.third_party_apis %}
+                                {% for proxy in config.third_party_apis %}
+                                <div class="card mb-3">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-cloud"></i> {{ proxy.name }}
+                                            {% if proxy.is_active %}
+                                            <span class="badge bg-success ms-2">激活</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary ms-2">禁用</span>
+                                            {% endif %}
+                                            <span class="badge bg-primary ms-1">优先级: {{ proxy.priority }}</span>
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-2">
+                                                    <label class="form-label text-muted">API基础URL</label>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                        value="{{ proxy.api_base }}" readonly>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <label class="form-label text-muted">默认模型</label>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                        value="{{ proxy.model }}" readonly>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-2">
+                                                    <label class="form-label text-muted">API密钥数量</label>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                        value="{{ proxy.api_keys|length }} 个密钥" readonly>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <label class="form-label text-muted">支持模型数量</label>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                        value="{{ proxy.models|length }} 个模型" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="openai_api_base" class="form-label">API基础URL</label>
-                                    <input type="text" class="form-control" id="openai_api_base" name="openai_api_base"
-                                        value="{{ config.openai.api_base }}" readonly>
+                                {% endfor %}
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    未配置任何第三方API代理。请在 <code>config.json</code> 中添加 <code>third_party_apis</code> 配置。
                                 </div>
-                                <div class="mb-3">
-                                    <label for="openai_model" class="form-label">默认模型</label>
-                                    <input type="text" class="form-control" id="openai_model" name="openai_model"
-                                        value="{{ config.openai.model }}" readonly>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="openai_models" class="form-label">可用模型列表</label>
-                                    <select class="form-select" id="openai_models" name="openai_models" multiple
-                                        disabled>
-                                        {% for model in config.openai.models %}
-                                        <option value="{{ model }}" {% if model==config.openai.model %}selected{% endif
-                                            %}>{{ model }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
+                                {% endif %}
                             </div>
 
                             <!-- 缓存配置 -->
@@ -428,7 +456,6 @@
     </div>
 </div>
 <script>
-    {{ super() }}
     // 加载动画
     let loadingOverlay;
 
@@ -580,6 +607,34 @@
         });
     }
 
+    // 标签页初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        // 确保第一个标签页默认激活
+        const firstTab = document.getElementById('third-party-api-tab');
+        const firstTabPane = document.getElementById('third-party-api');
+
+        if (firstTab && firstTabPane) {
+            // 确保第一个标签页处于激活状态
+            if (!firstTab.classList.contains('active')) {
+                firstTab.classList.add('active');
+                firstTab.setAttribute('aria-selected', 'true');
+            }
+
+            // 确保第一个内容面板处于激活状态
+            if (!firstTabPane.classList.contains('active')) {
+                firstTabPane.classList.add('show', 'active');
+            }
+        }
+
+        // 初始化Bootstrap标签页功能
+        const tabTriggerList = [].slice.call(document.querySelectorAll('#settingsTabs button[data-bs-toggle="tab"]'));
+        tabTriggerList.map(function (tabTriggerEl) {
+            return new bootstrap.Tab(tabTriggerEl);
+        });
+
+        console.log('标签页初始化完成');
+    });
+
     // 模型供应商管理相关JS
     // 在DOM完全加载后初始化元素
     document.addEventListener('DOMContentLoaded', function () {
@@ -588,14 +643,14 @@
 
     // 使用函数来获取元素，确保在使用时获取最新的元素
     function getAddProviderBtn() { return document.getElementById('addProviderBtn'); }
-    function getProviderModal() { 
+    function getProviderModal() {
         const modalElement = document.getElementById('providerModal');
         if (!modalElement) return null;
-        
+
         // 检查是否已有实例
         let modalInstance = bootstrap.Modal.getInstance(modalElement);
         if (modalInstance) return modalInstance;
-        
+
         // 确保bootstrap已加载
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             try {
@@ -939,23 +994,23 @@
 
 <!-- 添加调试脚本 -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         console.log('页面加载完成，检查Bootstrap状态');
         console.log('Bootstrap对象:', typeof bootstrap);
         if (typeof bootstrap !== 'undefined') {
             console.log('Bootstrap版本:', bootstrap.Tooltip.VERSION);
             console.log('Modal类是否存在:', typeof bootstrap.Modal);
-            
+
             // 安全地获取模态框元素
             const modalElement = document.getElementById('providerModal');
             console.log('模态框元素:', modalElement);
-            
+
             if (modalElement) {
                 try {
                     // 尝试获取已有实例
                     const existingModal = bootstrap.Modal.getInstance(modalElement);
                     console.log('已有Modal实例:', existingModal);
-                    
+
                     if (!existingModal) {
                         // 尝试创建新实例
                         console.log('尝试创建新Modal实例...');

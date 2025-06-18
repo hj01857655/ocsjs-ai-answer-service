@@ -19,20 +19,29 @@ def logs_panel():
     hours = int((uptime_seconds % 86400) // 3600)
     minutes = int((uptime_seconds % 3600) // 60)
     uptime_str = f"{days}天{hours}小时{minutes}分钟"
+    # 获取当前使用的代理信息
+    try:
+        from config.api_proxy_pool import get_api_proxy_pool
+        proxy_pool = get_api_proxy_pool()
+        primary_proxy = proxy_pool.get_primary_proxy()
+        current_model = primary_proxy.model if primary_proxy else "未配置代理"
+    except Exception:
+        current_model = "代理池未初始化"
+
     if request.args.get('ajax'):
         return render_template(
             'logs.html',
-            version="1.1.0",
+            version="2.0.0",
             log_content=log_content,
-            model=Config.OPENAI_MODEL,
+            model=current_model,
             uptime=uptime_str,
             current_year=current_year
         )
     return render_template(
         'logs.html',
-        version="1.1.0",
+        version="2.0.0",
         log_content=log_content,
-        model=Config.OPENAI_MODEL,
+        model=current_model,
         uptime=uptime_str,
         current_year=current_year
     )
@@ -48,22 +57,22 @@ def clear_logs():
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
             return jsonify({"success": True, "message": "创建了日志目录，但没有日志文件需要清空"})
-        
+
         # 获取所有日志文件
         log_files = glob.glob(os.path.join(log_dir, "*.log"))
         log_files.extend(glob.glob(os.path.join(log_dir, "*.log.*")))
-        
+
         if not log_files:
             return jsonify({"success": False, "message": "未找到日志文件"})
-        
+
         # 记录清空和失败的文件
         cleared_files = []
         failed_files = []
         error_messages = []
-        
+
         for log_file in log_files:
             try:
-                # 尝试关闭可能打开的文件句柄 
+                # 尝试关闭可能打开的文件句柄
                 try:
                     import psutil
                     for proc in psutil.process_iter(['pid', 'open_files']):
@@ -75,7 +84,7 @@ def clear_logs():
                             pass
                 except ImportError:
                     print("psutil模块不可用，跳过进程检查")
-                
+
                 # 尝试使用低级文件操作
                 try:
                     # 方法1: 使用truncate清空文件
@@ -97,22 +106,22 @@ def clear_logs():
             except Exception as e:
                 failed_files.append(log_file)
                 error_messages.append(f"{log_file}: {str(e)}")
-        
+
         # 根据结果返回相应的消息
         if cleared_files and not failed_files:
             return jsonify({
-                "success": True, 
+                "success": True,
                 "message": f"成功清空 {len(cleared_files)} 个日志文件"
             })
         elif cleared_files and failed_files:
             return jsonify({
-                "success": True, 
+                "success": True,
                 "message": f"部分成功: 清空了 {len(cleared_files)} 个文件，{len(failed_files)} 个文件失败",
                 "details": error_messages
             })
         else:
             return jsonify({
-                "success": False, 
+                "success": False,
                 "message": f"清空失败: 所有 {len(failed_files)} 个文件均无法清空",
                 "details": error_messages
             }), 500
@@ -120,7 +129,7 @@ def clear_logs():
         import traceback
         error_details = traceback.format_exc()
         return jsonify({
-            "success": False, 
+            "success": False,
             "message": f"清空日志文件失败: {str(e)}",
             "details": error_details
         }), 500

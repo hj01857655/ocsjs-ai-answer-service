@@ -1,20 +1,21 @@
 # EduBrain AI - 智能题库系统
 
-> **配置系统更新通知**: 本项目已从环境变量配置(.env)迁移到JSON配置文件。请使用config.json来配置服务，不再需要.env文件。详细配置选项请参考config.json.example。
+> **重大更新通知**: 本项目已升级为第三方API代理池架构，支持多个第三方API服务的负载均衡和故障转移。配置结构已从单一API配置升级为代理池数组配置，提供更高的可靠性和灵活性。
 
-这是一个基于Python和多AI供应商API的新一代智能题库服务，专为[OCS (Online Course Script)](https://github.com/ocsjs/ocsjs)设计，可以通过AI自动回答题目。此服务实现了与OCS AnswererWrapper兼容的API接口，方便用户将AI能力整合到OCS题库搜索中。
+这是一个基于Python和多第三方AI API的新一代智能题库服务，专为[OCS (Online Course Script)](https://github.com/ocsjs/ocsjs)设计，可以通过AI自动回答题目。此服务实现了与OCS AnswererWrapper兼容的API接口，方便用户将AI能力整合到OCS题库搜索中。
 
 ## ⚠️ 重要提示
 
 > [!IMPORTANT]
 > - 本项目仅供个人学习使用，不保证稳定性，且不提供任何技术支持。
-> - 使用者必须在遵循 OpenAI 的[使用条款](https://openai.com/policies/terms-of-use)以及**法律法规**的情况下使用，不得用于非法用途。
+> - 使用者必须在遵循各第三方AI服务提供商的使用条款以及**法律法规**的情况下使用，不得用于非法用途。
 > - 根据[《生成式人工智能服务管理暂行办法》](http://www.cac.gov.cn/2023-07/13/c_1690898327029107.htm)的要求，请勿对中国地区公众提供一切未经备案的生成式人工智能服务。
 > - 使用者应当遵守相关法律法规，承担相应的法律责任
 > - 服务不对AI生成内容的准确性做出保证
 
 ## 🌟 功能特点
 
+- 🌐 **第三方API代理池**：支持多个第三方API服务的负载均衡和故障转移
 - 💡 **多AI供应商支持**：支持OpenAI、Anthropic、Google等多个AI供应商
 - 🔄 **OCS兼容**：完全兼容OCS的AnswererWrapper题库接口
 - 🚀 **高性能缓存**：Redis + 内存双重缓存，快速响应请求
@@ -24,16 +25,18 @@
 - 🌐 **Web管理界面**：现代化的响应式管理仪表盘
 - 📱 **移动友好**：完美适配手机和平板设备
 - 👥 **用户管理**：完整的用户注册、登录、权限管理系统
-- 🔑 **API密钥池**：智能密钥轮换和管理
+- 🔑 **代理池监控**：智能代理选择、密钥轮换和实时监控
 - 🖼️ **图片代理**：解决超星平台图片403问题
 - 📚 **题库管理**：完整的题库增删改查和导出功能
+- ⚡ **智能故障转移**：自动检测代理状态，无缝切换到可用代理
+- 🎯 **负载均衡**：支持多种代理选择策略，优化性能和可靠性
 
 ## 📋 系统要求
 
 - Python 3.8+ (推荐 Python 3.9+)
 - MySQL 8.0+ (用于数据存储)
 - Redis (可选，用于缓存)
-- AI API密钥（OpenAI、Anthropic、Google等）
+- 第三方AI API密钥（支持OpenAI兼容接口的服务）
 
 ## 🚀 快速开始
 
@@ -83,7 +86,7 @@ copy config.json.example config.json
 cp config.json.example config.json
 ```
 
-编辑`config.json`文件，配置数据库和AI API：
+编辑`config.json`文件，配置数据库和第三方API代理池：
 
 ```json
 {
@@ -100,11 +103,24 @@ cp config.json.example config.json
     "password": "your_db_password",
     "name": "ocs_qa"
   },
-  "openai": {
-    "api_key": "your_openai_api_key_here",
-    "model": "gpt-4o-mini",
-    "api_base": "https://api.openai.com"
-  },
+  "third_party_apis": [
+    {
+      "name": "主要API服务",
+      "api_base": "https://api.example.com",
+      "api_keys": [
+        "sk-your-api-key-1",
+        "sk-your-api-key-2"
+      ],
+      "model": "claude-3-5-sonnet",
+      "models": [
+        "claude-3-5-sonnet",
+        "gpt-4o-mini",
+        "gemini-1.5-pro"
+      ],
+      "is_active": true,
+      "priority": 1
+    }
+  ],
   "cache": {
     "enable": true,
     "expiration": 2592000
@@ -161,8 +177,8 @@ python app.py
 - **AI实时搜题** (`/ai-search`): 在线测试AI答题功能
 - **题库管理** (`/questions`): 题库增删改查和数据导出
 - **系统日志** (`/logs`): 查看和管理系统日志
-- **Token管理** (`/tokens`): API密钥池监控和管理
-- **模型供应商** (`/providers`): AI模型供应商配置管理
+- **代理池监控** (`/proxy-monitor`): 第三方API代理池实时监控和管理
+- **系统设置** (`/settings`): 代理池配置和系统参数管理
 
 ### 用户权限
 
@@ -189,7 +205,7 @@ X-Access-Token: your_access_token_here (可选)
 | title   | string | 是   | 题目内容                                                 |
 | type    | string | 否   | 题目类型 (single-单选, multiple-多选, judgement-判断, completion-填空) |
 | options | string | 否   | 选项内容，通常是A、B、C、D选项的文本                       |
-| provider | string | 否   | 指定AI供应商 (openai, anthropic, google)                |
+| proxy   | string | 否   | 指定代理服务名称                                         |
 | model   | string | 否   | 指定模型名称                                             |
 
 **成功响应**:
@@ -199,7 +215,7 @@ X-Access-Token: your_access_token_here (可选)
   "code": 1,
   "question": "问题内容",
   "answer": "AI生成的答案",
-  "provider": "openai",
+  "proxy": "主要API服务",
   "model": "gpt-4o-mini",
   "cached": false,
   "response_time": 1.23
@@ -285,6 +301,91 @@ X-Access-Token: your_access_token_here (可选)
 - `url`: 图片URL (需要URL编码)
 
 **说明**: 用于解决超星平台图片403问题
+
+## 🌐 第三方API代理池
+
+### 代理池架构
+
+本系统采用先进的代理池架构，支持多个第三方API服务的统一管理：
+
+- **负载均衡**: 自动在多个代理间分配请求
+- **故障转移**: 自动检测代理状态，无缝切换到可用代理
+- **优先级管理**: 支持代理优先级设置，优先使用高优先级代理
+- **密钥轮换**: 每个代理支持多个API密钥的智能轮换
+- **实时监控**: 代理池状态实时监控和统计
+
+### 代理池配置
+
+在 `config.json` 中配置代理池：
+
+```json
+{
+  "third_party_apis": [
+    {
+      "name": "主要API服务",
+      "api_base": "https://api.example.com",
+      "api_keys": [
+        "sk-key1",
+        "sk-key2",
+        "sk-key3"
+      ],
+      "model": "gpt-4o-mini",
+      "models": [
+        "gpt-4o-mini",
+        "gpt-4o",
+        "claude-3-sonnet"
+      ],
+      "is_active": true,
+      "priority": 1
+    },
+    {
+      "name": "备用API服务",
+      "api_base": "https://backup-api.example.com",
+      "api_keys": [
+        "sk-backup-key1",
+        "sk-backup-key2"
+      ],
+      "model": "gpt-4o",
+      "models": [
+        "gpt-4o",
+        "gpt-4o-mini"
+      ],
+      "is_active": true,
+      "priority": 2
+    }
+  ]
+}
+```
+
+### 配置字段说明
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `name` | string | 是 | 代理服务名称，用于标识和显示 |
+| `api_base` | string | 是 | API基础URL地址 |
+| `api_keys` | array | 是 | API密钥数组，支持多个密钥轮换 |
+| `model` | string | 是 | 默认使用的模型名称 |
+| `models` | array | 是 | 支持的模型列表 |
+| `is_active` | boolean | 是 | 是否激活此代理（true/false） |
+| `priority` | number | 是 | 优先级（数字越小优先级越高） |
+
+### 代理选择策略
+
+系统支持多种代理选择策略：
+
+1. **优先级策略**: 优先使用priority值最小的激活代理
+2. **随机策略**: 从激活代理中随机选择（负载均衡）
+3. **模型匹配**: 根据请求的模型自动选择支持该模型的代理
+4. **故障转移**: 当前代理失败时自动切换到下一个可用代理
+
+### 代理池监控
+
+访问 `/proxy-monitor` 页面可以实时监控代理池状态：
+
+- **代理池汇总**: 总代理数、激活代理数、总密钥数、支持模型数
+- **代理详情**: 每个代理的状态、优先级、密钥数量、模型支持
+- **实时刷新**: 支持自动刷新和手动刷新
+- **密钥管理**: 查看每个代理的密钥列表和当前使用的密钥
 
 ## 🚀 部署建议
 
@@ -421,7 +522,7 @@ docker-compose up -d
 - 确认数据库用户权限
 - 创建数据库：`CREATE DATABASE ocs_qa CHARACTER SET utf8mb4;`
 
-### 2. AI API连接错误
+### 2. 第三方API连接错误
 
 **问题**: 遇到 `APIConnectionError` 或 `API调用失败`
 
@@ -430,12 +531,15 @@ docker-compose up -d
 - API基础URL配置错误
 - 网络连接问题
 - API配额不足
+- 代理服务不可用
 
 **解决方法**:
-- 检查config.json中的API配置
+- 检查config.json中的third_party_apis配置
 - 确认API密钥有效性
 - 测试网络连接
 - 检查API使用配额
+- 访问 `/proxy-monitor` 查看代理池状态
+- 检查代理的 `is_active` 状态
 
 ### 3. 虚拟环境问题
 
@@ -485,7 +589,40 @@ pip install -r requirements.txt
 - 添加适当的数据库索引
 - 监控数据库性能
 
-### 7. 图片显示问题
+### 7. 代理池配置问题
+
+**问题**: 代理池无法正常工作或显示异常
+
+**可能原因**:
+- 配置格式错误
+- 代理服务不可用
+- 密钥配置错误
+
+**解决方法**:
+- 检查 `config.json` 中 `third_party_apis` 数组格式
+- 确保每个代理都有必填字段：`name`, `api_base`, `api_keys`, `model`, `models`, `is_active`, `priority`
+- 访问 `/proxy-monitor` 查看代理池实时状态
+- 检查代理服务的网络连接
+- 验证API密钥的有效性
+
+**配置检查清单**:
+```json
+{
+  "third_party_apis": [
+    {
+      "name": "必填：代理名称",
+      "api_base": "必填：API基础URL",
+      "api_keys": ["必填：至少一个API密钥"],
+      "model": "必填：默认模型",
+      "models": ["必填：支持的模型列表"],
+      "is_active": true,
+      "priority": 1
+    }
+  ]
+}
+```
+
+### 8. 图片显示问题
 
 **问题**: 超星平台图片无法显示
 
@@ -501,7 +638,8 @@ ocsjs-ai-answer-service/
 ├── config/                    # 配置目录
 │   ├── __init__.py
 │   ├── config.py             # 主配置文件
-│   └── model_providers.py    # 模型供应商管理
+│   ├── api_proxy_pool.py     # 第三方API代理池管理
+│   └── api_pool.py           # 向后兼容的API池管理
 ├── models/                   # 数据模型
 │   ├── __init__.py
 │   └── models.py            # 数据库模型定义
@@ -510,9 +648,8 @@ ocsjs-ai-answer-service/
 │   ├── auth.py              # 用户认证路由
 │   ├── questions.py         # 题库管理路由
 │   ├── logs.py              # 日志管理路由
-│   ├── token.py             # Token管理路由
+│   ├── proxy_pool.py        # 代理池监控路由
 │   ├── settings.py          # 设置管理路由
-│   ├── provider.py          # 供应商管理路由
 │   └── image_proxy.py       # 图片代理路由
 ├── services/                # 服务层
 │   ├── __init__.py
@@ -534,6 +671,8 @@ ocsjs-ai-answer-service/
 │   ├── login.html           # 登录页面
 │   ├── questions.html       # 题库管理
 │   ├── logs.html            # 日志查看
+│   ├── proxy_pool.html      # 代理池监控
+│   ├── settings.html        # 系统设置
 │   └── ...                  # 其他模板
 ├── logs/                    # 日志目录
 ├── backups/                 # 备份目录
@@ -541,6 +680,7 @@ ocsjs-ai-answer-service/
 ├── app.py                   # 主应用文件
 ├── config.json              # 配置文件
 ├── config.json.example      # 配置示例
+├── config_example_multi_proxy.json  # 多代理配置示例
 ├── requirements.txt         # 依赖列表
 ├── .gitignore              # Git忽略文件
 └── README.md               # 项目说明
@@ -572,19 +712,39 @@ ocsjs-ai-answer-service/
     "password": "",
     "db": 0
   },
-  "openai": {
-    "api_key": "sk-xxx",
-    "model": "gpt-4o-mini",
-    "api_base": "https://api.openai.com"
-  },
-  "anthropic": {
-    "api_key": "sk-ant-xxx",
-    "model": "claude-3-haiku-20240307"
-  },
-  "google": {
-    "api_key": "AIza-xxx",
-    "model": "gemini-pro"
-  },
+  "third_party_apis": [
+    {
+      "name": "主要API服务",
+      "api_base": "https://api.example.com",
+      "api_keys": [
+        "sk-key1",
+        "sk-key2",
+        "sk-key3"
+      ],
+      "model": "gpt-4o-mini",
+      "models": [
+        "gpt-4o-mini",
+        "gpt-4o",
+        "claude-3-sonnet"
+      ],
+      "is_active": true,
+      "priority": 1
+    },
+    {
+      "name": "备用API服务",
+      "api_base": "https://backup-api.example.com",
+      "api_keys": [
+        "sk-backup-key1"
+      ],
+      "model": "gpt-4o",
+      "models": [
+        "gpt-4o",
+        "gpt-4o-mini"
+      ],
+      "is_active": true,
+      "priority": 2
+    }
+  ],
   "cache": {
     "enable": true,
     "expiration": 2592000
@@ -595,9 +755,45 @@ ocsjs-ai-answer-service/
   },
   "logging": {
     "level": "INFO"
-  }
+  },
+  "record": {
+    "enable": true
+  },
+  "response": {
+    "max_tokens": 500,
+    "temperature": 0.7
+  },
+  "default_provider": "third_party_api_pool"
 }
 ```
+
+## 🔧 代理池管理
+
+### 代理池健康检查
+
+系统提供了代理池的健康检查和监控功能：
+
+- **实时监控**: 访问 `/proxy-monitor` 查看代理池实时状态
+- **自动故障转移**: 系统自动检测代理状态，失败时切换到备用代理
+- **负载均衡**: 支持多种代理选择策略，优化性能
+
+### 代理池API接口
+
+```bash
+# 获取代理池状态
+curl http://localhost:5000/api/key_pool
+
+# 清除所有缓存
+curl -X POST http://localhost:5000/api/cache/clear_all
+```
+
+### 代理池配置验证
+
+可以通过以下方式验证代理池配置：
+
+1. **Web界面**: 访问 `/proxy-monitor` 查看配置状态
+2. **API接口**: 调用 `/api/key_pool` 获取详细信息
+3. **日志检查**: 查看 `/logs` 页面的系统日志
 
 ## 🤝 贡献指南
 

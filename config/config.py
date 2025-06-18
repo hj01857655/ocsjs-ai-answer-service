@@ -28,55 +28,33 @@ class Config:
     PORT = int(_config.get('service', {}).get('port', 5000))
     DEBUG = _config.get('service', {}).get('debug', True)
     SSL_CERT_FILE = _config.get('SSL_CERT_FILE')
-    
+
     # 安全配置
     SECRET_KEY = _config.get('security', {}).get('secret_key', os.urandom(24))
-    
-    # OpenAI配置
-    OPENAI_API_KEY = _config.get('openai', {}).get('api_key')
-    OPENAI_MODEL = _config.get('openai', {}).get('model', "gpt-4.1-mini")
-    OPENAI_MODELS = _config.get('openai', {}).get('models', ["gpt-4o", "gpt-4.1-mini", "gpt-4.1-nano"])
-    OPENAI_API_BASE = _config.get('openai', {}).get('api_base', 'https://veloera.wei.bi')
-    OPENAI_TEMPERATURE = float(_config.get('response', {}).get('temperature', 0.7))
-    OPENAI_MAX_TOKENS = int(_config.get('response', {}).get('max_tokens', 500))
-    
-    # Anthropic配置
-    ANTHROPIC_API_KEY = _config.get('anthropic', {}).get('api_key')
-    ANTHROPIC_MODEL = _config.get('anthropic', {}).get('model', "claude-3-sonnet-20240229")
-    ANTHROPIC_MODELS = _config.get('anthropic', {}).get('models', ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"])
-    ANTHROPIC_API_BASE = _config.get('anthropic', {}).get('api_base', 'https://api.anthropic.com')
-    ANTHROPIC_TEMPERATURE = float(_config.get('anthropic', {}).get('temperature', 0.7))
-    ANTHROPIC_MAX_TOKENS = int(_config.get('anthropic', {}).get('max_tokens', 500))
-    
-    # Google配置
-    GOOGLE_API_KEY = _config.get('google', {}).get('api_key')
-    GOOGLE_MODEL = _config.get('google', {}).get('model', "gemini-pro")
-    GOOGLE_MODELS = _config.get('google', {}).get('models', ["gemini-pro", "gemini-ultra"])
-    GOOGLE_API_BASE = _config.get('google', {}).get('api_base', 'https://generativelanguage.googleapis.com')
-    GOOGLE_TEMPERATURE = float(_config.get('google', {}).get('temperature', 0.7))
-    GOOGLE_MAX_TOKENS = int(_config.get('google', {}).get('max_tokens', 500))
-    
-    # 模型供应商配置
-    MODEL_PROVIDERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'model_providers.json')
-    DEFAULT_PROVIDER = _config.get('default_provider', 'openai')
-    
+
+    # 第三方代理池配置
+    THIRD_PARTY_APIS = _config.get('third_party_apis', [])
+
+    # 默认使用第三方代理池
+    DEFAULT_PROVIDER = 'third_party_api_pool'
+
     # 日志配置
     LOG_LEVEL = _config.get('logging', {}).get('level', "INFO")
-    
+
     # 安全配置（可选）
     ACCESS_TOKEN = _config.get('security', {}).get('access_token')
-    
+
     # 响应配置
     MAX_TOKENS = int(_config.get('response', {}).get('max_tokens', 500))
     TEMPERATURE = float(_config.get('response', {}).get('temperature', 0.7))
-    
+
     # 缓存配置
     ENABLE_CACHE = _config.get('cache', {}).get('enable', True)
     CACHE_EXPIRATION = int(_config.get('cache', {}).get('expiration', 2592000))  # 默认缓存30天
-    
+
     # 记录配置
     ENABLE_RECORD = _config.get('record', {}).get('enable', True)  # 是否记录问答到数据库
-    
+
     # 数据库配置 - MySQL 8.4.0
     DB_TYPE = _config.get('database', {}).get('type', "mysql")
     DB_HOST = _config.get('database', {}).get('host', "localhost")
@@ -84,10 +62,10 @@ class Config:
     DB_USER = _config.get('database', {}).get('user', "root")
     DB_PASSWORD = _config.get('database', {}).get('password', "123456")
     DB_NAME = _config.get('database', {}).get('name', "ocs_qa")
-    
+
     # 数据库连接字符串
     SQLALCHEMY_DATABASE_URI = f"{DB_TYPE}+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
-    
+
     # Redis配置
     REDIS_ENABLED = _config.get('redis', {}).get('enabled', False)
     REDIS_HOST = _config.get('redis', {}).get('host', "localhost")
@@ -103,25 +81,18 @@ def update_config(new_config):
     Config.ENABLE_CACHE = new_config.get('ENABLE_CACHE', Config.ENABLE_CACHE)
     Config.CACHE_EXPIRATION = new_config.get('CACHE_EXPIRATION', Config.CACHE_EXPIRATION)
     Config.ENABLE_RECORD = new_config.get('ENABLE_RECORD', Config.ENABLE_RECORD)
-    Config.OPENAI_API_KEY = new_config.get('OPENAI_API_KEY', Config.OPENAI_API_KEY)
-    Config.OPENAI_MODEL = new_config.get('OPENAI_MODEL', Config.OPENAI_MODEL)
-    Config.OPENAI_MODELS = new_config.get('OPENAI_MODELS', Config.OPENAI_MODELS)
-    Config.OPENAI_API_BASE = new_config.get('OPENAI_API_BASE', Config.OPENAI_API_BASE)
-    Config.OPENAI_TEMPERATURE = new_config.get('OPENAI_TEMPERATURE', Config.OPENAI_TEMPERATURE)
-    Config.OPENAI_MAX_TOKENS = new_config.get('OPENAI_MAX_TOKENS', Config.OPENAI_MAX_TOKENS)
     Config.ACCESS_TOKEN = new_config.get('ACCESS_TOKEN', Config.ACCESS_TOKEN)
+
+    # 更新第三方代理池配置
+    if 'THIRD_PARTY_APIS' in new_config:
+        Config.THIRD_PARTY_APIS = new_config['THIRD_PARTY_APIS']
     config_data = {
         'service': {
             'host': Config.HOST,
             'port': Config.PORT,
             'debug': Config.DEBUG
         },
-        'openai': {
-            'api_key': Config.OPENAI_API_KEY,
-            'model': Config.OPENAI_MODEL,
-            'models': Config.OPENAI_MODELS,
-            'api_base': Config.OPENAI_API_BASE
-        },
+        'third_party_apis': Config.THIRD_PARTY_APIS,
         'cache': {
             'enable': Config.ENABLE_CACHE,
             'expiration': Config.CACHE_EXPIRATION

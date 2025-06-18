@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +17,7 @@
             min-height: 100vh;
             background-color: #f8f9fa;
         }
+
         .sidebar {
             min-width: 220px;
             max-width: 240px;
@@ -29,14 +31,18 @@
             display: flex;
             flex-direction: column;
         }
+
         .sidebar .nav-link {
             color: #fff;
             font-weight: 500;
         }
-        .sidebar .nav-link.active, .sidebar .nav-link:hover {
-            background: rgba(255,255,255,0.1);
+
+        .sidebar .nav-link.active,
+        .sidebar .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
             color: #ffd700;
         }
+
         .sidebar .sidebar-header {
             padding: 1.5rem 1rem 1rem 1rem;
             font-size: 1.5rem;
@@ -44,82 +50,141 @@
             letter-spacing: 1px;
             text-align: center;
         }
+
         .sidebar .user-info {
             margin-top: auto;
             padding: 1rem;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
             text-align: center;
         }
+
         .main-content {
             margin-left: 240px;
             padding: 2rem 1rem 1rem 1rem;
         }
+
         @media (max-width: 991.98px) {
             .sidebar {
                 position: fixed;
                 left: -240px;
                 transition: left 0.3s;
             }
+
             .sidebar.show {
                 left: 0;
             }
+
             .main-content {
                 margin-left: 0;
                 padding-top: 4rem;
             }
         }
-        /* API密钥状态指示器 */
+
+        /* 代理池状态指示器 */
         .api-key-status {
-            padding: 0.5rem 1rem;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 0.75rem 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
             text-align: center;
             margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.375rem;
+            margin: 0.5rem;
         }
+
+        .api-key-status div {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .api-key-status small {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            display: block;
+            word-break: break-all;
+        }
+
         .status-indicator {
             display: inline-block;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            margin-right: 5px;
+            margin-right: 6px;
+            vertical-align: middle;
+            animation: pulse 2s infinite;
         }
+
         .status-normal {
             background-color: #28a745;
+            box-shadow: 0 0 6px rgba(40, 167, 69, 0.6);
         }
+
         .status-warning {
             background-color: #ffc107;
+            box-shadow: 0 0 6px rgba(255, 193, 7, 0.6);
         }
+
         .status-error {
             background-color: #dc3545;
+            box-shadow: 0 0 6px rgba(220, 53, 69, 0.6);
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
     </style>
     {% block head %}{% endblock %}
 </head>
+
 <body>
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <i class="bi bi-brain"></i> EduBrain AI
         </div>
         <ul class="nav flex-column px-2">
-            <li class="nav-item"><a class="nav-link {% if '/ai-search' in request.path %}active{% endif %}" href="/ai-search">AI实时搜题</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/dashboard' in request.path %}active{% endif %}" href="/dashboard">统计面板</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/questions' in request.path %}active{% endif %}" href="/questions">题库管理</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/logs' in request.path %}active{% endif %}" href="/logs">系统日志</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/settings' in request.path %}active{% endif %}" href="/settings">系统设置</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/providers' in request.path %}active{% endif %}" href="/providers"><i class="bi bi-building"></i> 模型供应商管理</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/docs' in request.path %}active{% endif %}" href="/docs">API文档</a></li>
-            <li class="nav-item"><a class="nav-link {% if '/tokens' in request.path %}active{% endif %}" href="/tokens">Token监控</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/ai-search' in request.path %}active{% endif %}"
+                    href="/ai-search">AI实时搜题</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/dashboard' in request.path %}active{% endif %}"
+                    href="/dashboard">统计面板</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/questions' in request.path %}active{% endif %}"
+                    href="/questions">题库管理</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/logs' in request.path %}active{% endif %}"
+                    href="/logs">系统日志</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/settings' in request.path %}active{% endif %}"
+                    href="/settings">系统设置</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/docs' in request.path %}active{% endif %}"
+                    href="/docs">API文档</a></li>
+            <li class="nav-item"><a class="nav-link {% if '/proxy-monitor' in request.path %}active{% endif %}"
+                    href="/proxy-monitor">代理池监控</a></li>
         </ul>
         <div class="api-key-status">
-            <div>API密钥状态 <span id="apiKeyStatus"><span class="status-indicator status-normal"></span>正常</span></div>
+            <div>
+                <span class="status-indicator status-normal" id="statusIndicator"></span>
+                <span id="apiKeyStatus">代理池状态</span>
+            </div>
             <small id="currentApiKey">加载中...</small>
         </div>
         <div class="user-info">
             {% if session.get('user_id') %}
-                <div><i class="bi bi-person-circle"></i> {{ session.get('username', '用户') }}</div>
-                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light btn-sm mt-2"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+            <div><i class="bi bi-person-circle"></i> {{ session.get('username', '用户') }}</div>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light btn-sm mt-2"><i
+                    class="bi bi-box-arrow-right"></i> 退出登录</a>
             {% else %}
-                <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-sm me-2"><i class="bi bi-box-arrow-in-right"></i> 登录</a>
-                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-person-plus"></i> 注册</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-sm me-2"><i
+                    class="bi bi-box-arrow-in-right"></i> 登录</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light btn-sm"><i
+                    class="bi bi-person-plus"></i> 注册</a>
             {% endif %}
         </div>
     </div>
@@ -133,35 +198,54 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script>
         // 移动端侧边栏切换
-        document.getElementById('sidebarToggle').onclick = function() {
+        document.getElementById('sidebarToggle').onclick = function () {
             document.getElementById('sidebar').classList.toggle('show');
         };
         // 点击主内容区关闭侧边栏（移动端）
-        document.querySelector('.main-content').onclick = function() {
-            if(window.innerWidth < 992) {
+        document.querySelector('.main-content').onclick = function () {
+            if (window.innerWidth < 992) {
                 document.getElementById('sidebar').classList.remove('show');
             }
         };
     </script>
     {% block scripts %}
     <script>
-    function refreshApiKeyStatus() {
-        fetch('/api/key_pool').then(res => res.json()).then(data => {
-            document.getElementById('currentApiKey').textContent = data.current || '无主密钥';
-            const statusSpan = document.getElementById('apiKeyStatus');
-            if (data.count > 0) {
-                statusSpan.innerHTML = '<span class="status-indicator status-normal"></span>正常';
-            } else {
-                statusSpan.innerHTML = '<span class="status-indicator status-error"></span>异常';
-            }
-        }).catch(() => {
-            document.getElementById('currentApiKey').textContent = '获取失败';
-            document.getElementById('apiKeyStatus').innerHTML = '<span class="status-indicator status-error"></span>异常';
-        });
-    }
-    refreshApiKeyStatus();
-    setInterval(refreshApiKeyStatus, 30000); // 每30秒刷新一次
+        function refreshProxyPoolStatus() {
+            fetch('/api/key_pool').then(res => res.json()).then(data => {
+                const statusIndicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('apiKeyStatus');
+                const currentApiKey = document.getElementById('currentApiKey');
+
+                // 显示主要代理信息
+                const primaryProxy = data.proxies && data.proxies.length > 0 ? data.proxies[0] : null;
+                if (primaryProxy) {
+                    currentApiKey.textContent = `${primaryProxy.name} (${primaryProxy.keys_count}个密钥)`;
+                } else {
+                    currentApiKey.textContent = '无可用代理';
+                }
+
+                // 更新状态指示器和文本
+                if (data.active_proxies > 0) {
+                    statusIndicator.className = 'status-indicator status-normal';
+                    statusText.textContent = `代理池正常 (${data.active_proxies}/${data.total_proxies})`;
+                } else {
+                    statusIndicator.className = 'status-indicator status-error';
+                    statusText.textContent = '代理池异常';
+                }
+            }).catch(() => {
+                const statusIndicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('apiKeyStatus');
+                const currentApiKey = document.getElementById('currentApiKey');
+
+                statusIndicator.className = 'status-indicator status-error';
+                statusText.textContent = '代理池异常';
+                currentApiKey.textContent = '获取失败';
+            });
+        }
+        refreshProxyPoolStatus();
+        setInterval(refreshProxyPoolStatus, 30000); // 每30秒刷新一次
     </script>
     {% endblock %}
 </body>
-</html> 
+
+</html>

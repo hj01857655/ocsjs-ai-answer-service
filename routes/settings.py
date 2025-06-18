@@ -3,7 +3,7 @@ import os
 from flask import Blueprint, render_template, request, session, redirect
 from datetime import datetime
 from functools import wraps
-from config.model_providers import provider_manager, load_providers_from_file
+# provider 相关导入已移除
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
 
@@ -44,28 +44,20 @@ def settings():
     # 构造 current_config 供前端渲染
     current_config = {
         'service': config.get('service', {}),
-        'openai': config.get('openai', {}),
+        'third_party_apis': config.get('third_party_apis', []),
         'cache': config.get('cache', {}),
         'database': config.get('database', {}),
         'redis': config.get('redis', {}),
         'record': config.get('record', {}),
         'security': config.get('security', {}),
-        
-        # 获取模型供应商信息
-        'model_providers': [],
-        'default_provider': ''
+
+        # provider 相关字段已移除
     }
     if request.method == 'POST':
         try:
-            # 只允许编辑 openai、cache、database、redis、record
-            # openai
-            openai = config.get('openai', {})
-            openai['api_key'] = request.form.get('openai_api_key', openai.get('api_key', ''))
-            openai['session'] = request.form.get('openai_session', openai.get('session', ''))
-            openai['api_base'] = request.form.get('openai_api_base', openai.get('api_base', ''))
-            openai['model'] = request.form.get('openai_model', openai.get('model', ''))
-            openai['models'] = request.form.getlist('openai_models') or openai.get('models', [])
-            config['openai'] = openai
+            # 只允许编辑 third_party_apis、cache、database、redis、record
+            # 注意：第三方API代理池配置现在是只读的，需要直接编辑config.json
+            # 这里保持向后兼容，但实际上不会修改数组结构
             # cache
             cache = config.get('cache', {})
             cache['enable'] = request.form.get('cache_enable') == 'on'
@@ -94,59 +86,21 @@ def settings():
             save_config(config)
             success = request.args.get('success', False)
             message = request.args.get('message', '')
-            
-            # 获取模型供应商信息
-            providers = provider_manager.get_all_providers()
-            model_providers = []
-            for provider in providers:
-                model_providers.append({
-                    'provider_id': provider.provider_id,
-                    'name': provider.name,
-                    'api_key': provider.api_key,
-                    'api_base': provider.api_base,
-                    'models': provider.models,
-                    'default_model': provider.default_model,
-                    'is_active': provider.is_active,
-                    'parameters': provider.parameters
-                })
-            default_provider = provider_manager.get_default_provider_id()
-            
-            return render_template('settings.html', 
+
+            return render_template('settings.html',
                                    config=current_config,
-                                   model_providers=model_providers,
-                                   default_provider=default_provider,
-                                   current_year=current_year, 
-                                   success=success, 
+                                   current_year=current_year,
+                                   success=success,
                                    message=message)
         except Exception as e:
             return render_template('settings.html', error=f"更新配置失败: {str(e)}", config=current_config, current_year=current_year)
     success = request.args.get('success', False)
     message = request.args.get('message', '')
-    
-    # 获取模型供应商信息
-    providers = provider_manager.get_all_providers()
-    model_providers = []
-    for provider in providers:
-        # 确保provider_id是字符串
-        provider_id = str(provider.provider_id) if provider.provider_id is not None else ''
-        model_providers.append({
-            'provider_id': provider_id,
-            'name': provider.name,
-            'api_key': provider.api_key,
-            'api_base': provider.api_base,
-            'models': provider.models,
-            'default_model': provider.default_model,
-            'is_active': provider.is_active,
-            'parameters': provider.parameters
-        })
-    default_provider = provider_manager.get_default_provider_id()
-    # 确保default_provider是字符串
-    default_provider = str(default_provider) if default_provider is not None else ''
-    
-    return render_template('settings.html', 
+
+    # Provider 相关代码已移除
+
+    return render_template('settings.html',
                            config=current_config,
-                           model_providers=model_providers,
-                           default_provider=default_provider,
-                           current_year=current_year, 
-                           success=success, 
+                           current_year=current_year,
+                           success=success,
                            message=message)
