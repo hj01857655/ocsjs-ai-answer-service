@@ -662,7 +662,8 @@ ocsjs-ai-answer-service/
 │   ├── auth.py              # 认证工具
 │   ├── logger.py            # 日志工具
 │   ├── question_cleaner.py  # 题目清理工具
-│   └── get_models_list.py   # 模型列表获取工具
+│   ├── get_models_list.py   # 模型列表获取工具
+│   └── clean_question_prefixes.py  # 题目前缀清理工具
 ├── static/                  # 静态资源
 │   ├── css/                 # 样式文件
 │   ├── js/                  # JavaScript文件

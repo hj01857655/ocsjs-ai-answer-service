@@ -8,6 +8,7 @@
 - logger.py: 日志工具
 - question_cleaner.py: 题目清理工具
 - get_models_list.py: 获取第三方API模型列表工具（独立脚本）
+- clean_question_prefixes.py: 题目前缀清理工具（数据库维护脚本）
 """
 
 from .utils import (
